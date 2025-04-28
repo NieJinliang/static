@@ -1,4 +1,15 @@
-/* Basic Reset */
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快来找单词 (Progressive)</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Basic Reset */
 * {
     margin: 0;
     padding: 0;
@@ -210,3 +221,333 @@ button:active {
     border-radius: 15px; font-size: 1em; font-weight: bold;
     text-transform: uppercase; box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
 }
+
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <h1>快来找单词</h1>
+
+        <div class="game-stats">
+             <div class="stat-item">
+                 关卡: <span id="current-level">1</span>
+            </div>
+            <div class="stat-item">
+                用时: <span id="timer">00:00</span>
+            </div>
+            <div class="stat-item">
+                本关: <span id="score">0</span> / <span id="total-words">0</span>
+            </div>
+            <div class="stat-item">
+                 累计单词: <span id="total-score-all-levels">0</span>
+            </div>
+        </div>
+
+        <div class="game-controls">
+            <button id="hint-btn" title="显示一个未找到的单词">提示</button> <!-- Added Hint Button -->
+            <button id="new-game-btn" title="重新开始第一关">新游戏</button>
+       </div>
+
+
+        <div id="game-grid" class="grid-container">
+            <!-- Grid cells dynamically generated -->
+            <!-- Grid size set via JS -->
+        </div>
+
+        <div class="found-words-container">
+            <h2>本关找到的单词:</h2>
+            <ul id="found-words-list">
+                <!-- Found words listed here -->
+            </ul>
+        </div>
+    </div> <!-- End of main-container -->
+
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2/dist/fuse.min.js"></script>
+    <!-- <script src="script.js"></script> -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+    // --- Constants and Config ---
+    const HINTS_ENABLED = true; // <<< Control parameter
+    const BASE_GRID_SIZE = 3;
+    const BASE_TARGET_WORDS = 4;
+    const GRID_INCREMENT = 1;
+    const WORD_COUNT_MULTIPLIER = 1.5;
+    const MIN_WORD_LENGTH = 3;
+
+    // --- Hardcoded Word List ---
+    const DICTIONARY = [ /* ... Keep your dictionary ... */
+        "apple", "banana", "orange", "grape", "lemon", "melon", "peach", "berry", "kiwi", "lime",
+        "search", "word", "grid", "game", "play", "find", "letter", "puzzle", "link", "list",
+        "code", "script", "style", "html", "java", "query", "mouse", "touch", "cell", "data",
+        "timer", "score", "time", "level", "easy", "hard", "swift", "fast", "quick", "move",
+        "house", "table", "chair", "light", "plant", "water", "earth", "fire", "door", "wall",
+        "wind", "cloud", "rain", "snow", "star", "moon", "sun", "blue", "red", "line", "draw",
+        "green", "black", "white", "happy", "smile", "fun", "zone", "area", "path", "row", "calm"
+    ];
+
+    // --- DOM Elements ---
+    const gridContainer = document.getElementById('game-grid');
+    const timerElement = document.getElementById('timer');
+    const currentLevelElement = document.getElementById('current-level');
+    const scoreElement = document.getElementById('score');
+    const totalWordsElement = document.getElementById('total-words');
+    const totalScoreAllLevelsElement = document.getElementById('total-score-all-levels');
+    const foundWordsList = document.getElementById('found-words-list');
+    const newGameBtn = document.getElementById('new-game-btn');
+    const hintBtn = document.getElementById('hint-btn'); // <<< Get Hint Button
+
+    // --- Game State Variables ---
+    let currentLevel = 1;
+    let totalWordsFoundAcrossLevels = 0;
+    let elapsedTime = 0;
+    let timerInterval = null;
+    let currentGridSize = BASE_GRID_SIZE;
+    let currentTargetWordCount = BASE_TARGET_WORDS;
+    let currentMaxWordLength = BASE_GRID_SIZE;
+    let grid = [];
+    let placedWords = [];
+    let fuseInstance = null;
+    let foundWords = new Set();
+    let isDragging = false;
+    let selectedCells = [];
+    let currentPath = [];
+
+    // --- Difficulty Calculation ---
+    function calculateGridSize(level) { return BASE_GRID_SIZE + (level - 1) * GRID_INCREMENT; }
+    function calculateTargetWordCount(level) { return Math.max(BASE_TARGET_WORDS, Math.floor(BASE_TARGET_WORDS * Math.pow(WORD_COUNT_MULTIPLIER, level - 1))); }
+
+    // --- Grid Generation ---
+    function generateGrid() {
+        currentGridSize = calculateGridSize(currentLevel);
+        currentTargetWordCount = calculateTargetWordCount(currentLevel);
+        currentMaxWordLength = currentGridSize;
+        console.log(`Level ${currentLevel}: Size ${currentGridSize}x${currentGridSize}, Target Words ${currentTargetWordCount}, Max Length ${currentMaxWordLength}`);
+        grid = Array(currentGridSize).fill(null).map(() => Array(currentGridSize).fill(null));
+        placedWords = [];
+        foundWords.clear();
+        fuseInstance = null;
+        gridContainer.innerHTML = '';
+        foundWordsList.innerHTML = '';
+        gridContainer.style.gridTemplateColumns = `repeat(${currentGridSize}, minmax(25px, 1fr))`;
+        gridContainer.style.gridTemplateRows = `repeat(${currentGridSize}, minmax(25px, 1fr))`;
+        gridContainer.style.setProperty('--grid-size', currentGridSize);
+
+        const potentialWords = DICTIONARY.filter(word => word.length >= MIN_WORD_LENGTH && word.length <= currentMaxWordLength);
+        if (potentialWords.length < currentTargetWordCount) {
+            console.warn(`Not enough suitable words in dictionary (${potentialWords.length}) for level ${currentLevel}.`);
+        }
+        embedWords(potentialWords);
+        fillRemainingCells();
+        createGridElements();
+
+        const wordsForFuse = placedWords.map(pw => pw.word);
+        if (wordsForFuse.length > 0) {
+            const fuseOptions = { includeScore: false, threshold: 0.0 };
+            fuseInstance = new Fuse(wordsForFuse, fuseOptions);
+        } else {
+            console.error("No words were embedded for this level!");
+        }
+        scoreElement.textContent = '0';
+        totalWordsElement.textContent = placedWords.length;
+        currentLevelElement.textContent = currentLevel;
+        totalScoreAllLevelsElement.textContent = totalWordsFoundAcrossLevels;
+        console.log(`Grid generated for Level ${currentLevel}. Hidden words: ${placedWords.length > 0 ? wordsForFuse.join(', ') : 'None'}`);
+
+        // <<< Update Hint Button State >>>
+        updateHintButtonState();
+    }
+
+    // --- embedWords, canPlaceWord, placeWord, fillRemainingCells, createGridElements ---
+    // --- getRandomLetter, shuffle ---
+    // (No changes needed in these core logic functions)
+     function embedWords(availableWords){const directions=[{dr:0,dc:1},{dr:1,dc:0},{dr:1,dc:1},{dr:1,dc:-1},{dr:0,dc:-1},{dr:-1,dc:0},{dr:-1,dc:-1},{dr:-1,dc:1}];let wordsToEmbed=shuffle(availableWords),embeddedCount=0,attempts=0,maxAttempts=Math.max(wordsToEmbed.length*10,currentGridSize*currentGridSize),actualTarget=Math.min(currentTargetWordCount,availableWords.length);while(embeddedCount<actualTarget&&attempts<maxAttempts&&wordsToEmbed.length>0){const word=wordsToEmbed.pop().toUpperCase();attempts++;if(word.length>currentGridSize)continue;let placed=!1,shuffledDirections=shuffle([...directions]),maxPlaceAttempts=currentGridSize*currentGridSize;for(let placeAttempt=0;placeAttempt<maxPlaceAttempts&&!placed;placeAttempt++){const startRow=Math.floor(Math.random()*currentGridSize),startCol=Math.floor(Math.random()*currentGridSize),direction=shuffledDirections[placeAttempt%shuffledDirections.length];canPlaceWord(word,startRow,startCol,direction)&&(placeWord(word,startRow,startCol,direction,embeddedCount),placed=!0,embeddedCount++)}}console.log(`Attempted to embed words for level ${currentLevel}. Successfully embedded: ${embeddedCount}/${actualTarget}`),embeddedCount<actualTarget&&console.warn(`Could only embed ${embeddedCount} words. Target was ${actualTarget}.`)} // Minified
+     function canPlaceWord(word,startRow,startCol,direction){let currentRow=startRow,currentCol=startCol;for(let i=0;i<word.length;i++){if(currentRow<0||currentRow>=currentGridSize||currentCol<0||currentCol>=currentGridSize)return!1;const existingCell=grid[currentRow]?.[currentCol];if(existingCell!==null&&existingCell.letter!==word[i])return!1;currentRow+=direction.dr,currentCol+=direction.dc}return!0} // Minified
+     function placeWord(word,startRow,startCol,direction,wordId){let currentRow=startRow,currentCol=startCol;const path=[];let crossOccurred=!1;for(let i=0;i<word.length;i++){const letter=word[i];path.push({row:currentRow,col:currentCol});if(currentRow>=0&&currentRow<currentGridSize&&currentCol>=0&&currentCol<currentGridSize){if(grid[currentRow][currentCol]===null)grid[currentRow][currentCol]={letter:letter,isWordPart:!0,wordId:[wordId]};else{grid[currentRow][currentCol].isWordPart=!0,grid[currentRow][currentCol].wordId.includes(wordId)||grid[currentRow][currentCol].wordId.push(wordId),crossOccurred=!0}}else{console.error(`Error placing word "${word}" - Out of bounds at ${currentRow}, ${currentCol}`);return}currentRow+=direction.dr,currentCol+=direction.dc}placedWords.push({word:word,path:path,crossed:crossOccurred})} // Minified
+     function fillRemainingCells(){for(let r=0;r<currentGridSize;r++)for(let c=0;c<currentGridSize;c++)grid[r]?.[c]===null&&(grid[r]||(grid[r]=[]),grid[r][c]={letter:getRandomLetter(),isWordPart:!1,wordId:[]})} // Minified
+     function createGridElements(){gridContainer.innerHTML="";for(let r=0;r<currentGridSize;r++)for(let c=0;c<currentGridSize;c++){const cellElement=document.createElement("div");cellElement.classList.add("grid-cell"),cellElement.dataset.row=r,cellElement.dataset.col=c,cellElement.textContent=grid[r]?.[c]?.letter??"?",gridContainer.appendChild(cellElement),grid[r]?.[c]?grid[r][c].element=cellElement:console.error(`Grid data missing at [${r}][${c}] during element creation`)}} // Minified
+     function getRandomLetter(){const alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZ",vowels="AEIOU",highFreqConsonants="STRNL",weights={};let totalWeight=0;for(const letter of alphabet){let weight=1;vowels.includes(letter)?weight*=1.3:highFreqConsonants.includes(letter)&&(weight*=1.2),weights[letter]=weight,totalWeight+=weight}let random=Math.random()*totalWeight;for(const letter of alphabet){if(random<weights[letter])return letter;random-=weights[letter]}return"E"} // Minified
+     function shuffle(array){let currentIndex=array.length,randomIndex;while(currentIndex!==0)randomIndex=Math.floor(Math.random()*currentIndex),currentIndex--,[array[currentIndex],array[randomIndex]]=[array[randomIndex],array[currentIndex]];return array} // Minified
+
+    // --- Interaction Handling ---
+    // (setupGridEventListeners, disableGridEventListeners, handlePointerDown,
+    // handlePointerMove, handlePointerUp, handlePointerLeave, addCellToSelection,
+    // getCellCoords, isAdjacent, isCollinear remain the same)
+    function setupGridEventListeners(){gridContainer.removeEventListener("pointerdown",handlePointerDown),gridContainer.removeEventListener("pointermove",handlePointerMove),gridContainer.removeEventListener("pointerup",handlePointerUp),gridContainer.removeEventListener("pointerleave",handlePointerLeave),gridContainer.addEventListener("pointerdown",handlePointerDown),gridContainer.addEventListener("pointermove",handlePointerMove),gridContainer.addEventListener("pointerup",handlePointerUp),gridContainer.addEventListener("pointerleave",handlePointerLeave)}
+    function disableGridEventListeners(){gridContainer.removeEventListener("pointerdown",handlePointerDown),gridContainer.removeEventListener("pointermove",handlePointerMove),gridContainer.removeEventListener("pointerup",handlePointerUp),gridContainer.removeEventListener("pointerleave",handlePointerLeave),gridContainer.style.cursor="default"}
+    function handlePointerDown(e){const targetCell=e.target.closest(".grid-cell");targetCell&&gridContainer.contains(targetCell)&&(isDragging=!0,clearSelectionVisuals(!0),selectedCells=[],currentPath=[],addCellToSelection(targetCell),e.preventDefault())}
+    function handlePointerMove(e){if(!isDragging)return;const elementUnderPointer=document.elementFromPoint(e.clientX,e.clientY),targetCell=elementUnderPointer?elementUnderPointer.closest(".grid-cell"):null;if(targetCell&&gridContainer.contains(targetCell)){const lastSelected=selectedCells.length>0?selectedCells[selectedCells.length-1]:null;(!lastSelected||isAdjacent(getCellCoords(targetCell),getCellCoords(lastSelected.element)))&&addCellToSelection(targetCell),e.preventDefault()}}
+    function handlePointerUp(e){isDragging&&(isDragging=!1,validateSelection())}
+    function handlePointerLeave(e){if(isDragging){const gridRect=gridContainer.getBoundingClientRect();(e.clientX<gridRect.left||e.clientX>gridRect.right||e.clientY<gridRect.top||e.clientY>gridRect.bottom)&&(isDragging=!1,validateSelection())}}
+    function addCellToSelection(cellElement){const row=parseInt(cellElement.dataset.row),col=parseInt(cellElement.dataset.col),currentCoords={row:row,col:col};if(currentPath.some((p=>p.row===row&&p.col===col)))return;if(currentPath.length>=2){const first=currentPath[0],second=currentPath[1];if(!isCollinear(first,second,currentCoords))return}const lastCellCoords=currentPath.length>0?currentPath[currentPath.length-1]:null;if(lastCellCoords&&!isAdjacent(currentCoords,lastCellCoords))return;cellElement.classList.add("selected"),selectedCells.push({row:row,col:col,element:cellElement}),currentPath.push(currentCoords)}
+    function getCellCoords(cellElement){const row=cellElement.dataset.row!==void 0?parseInt(cellElement.dataset.row):-1,col=cellElement.dataset.col!==void 0?parseInt(cellElement.dataset.col):-1;return{row:row,col:col}}
+    function isAdjacent(cell1,cell2){if(!cell1||!cell2||cell1.row===-1||cell2.row===-1)return!1;const dr=Math.abs(cell1.row-cell2.row),dc=Math.abs(cell1.col-cell2.col);return dr<=1&&dc<=1&&!(dr===0&&dc===0)}
+    function isCollinear(p1,p2,p3){if(!p1||!p2||!p3)return!1;const dx1=p2.col-p1.col,dy1=p2.row-p1.row,dx2=p3.col-p1.col,dy2=p3.row-p1.row;return dx1*dy2===dx2*dy1}
+
+    // --- Validation Logic (Updated Level Completion Check) ---
+    function validateSelection() {
+        if (selectedCells.length < MIN_WORD_LENGTH || !fuseInstance) {
+            clearSelectionVisuals(true); selectedCells = []; currentPath = []; return;
+        }
+        let selectedWord = "";
+        try {
+            selectedWord = selectedCells.map(sc => grid[sc.row]?.[sc.col]?.letter ?? '').join('');
+        } catch (error) { console.error("Error constructing word:", error); clearSelectionVisuals(true); selectedCells = []; currentPath = []; return; }
+        selectedWord = selectedWord.toUpperCase();
+        let wordForward = selectedWord, wordBackward = selectedWord.split('').reverse().join(''), isValid = false, foundWordStr = "";
+        const forwardResult = fuseInstance.search(wordForward), backwardResult = fuseInstance.search(wordBackward);
+        if (forwardResult.length > 0 && !foundWords.has(wordForward)) { isValid = true; foundWordStr = wordForward; }
+        else if (backwardResult.length > 0 && !foundWords.has(wordBackward)) { isValid = true; foundWordStr = wordBackward; }
+
+        if (isValid) {
+            foundWords.add(foundWordStr);
+            totalWordsFoundAcrossLevels++;
+            markWordAsFound(selectedCells);
+            updateScore();
+            updateFoundWordsList();
+            totalScoreAllLevelsElement.textContent = totalWordsFoundAcrossLevels;
+            updateHintButtonState(); // <<< Update hint button after finding a word
+
+            if (placedWords.length > 0 && foundWords.size === placedWords.length) {
+                handleLevelComplete();
+            }
+        } else {
+            markSelectionError(selectedCells);
+        }
+        selectedCells = []; currentPath = [];
+    }
+
+    function handleLevelComplete() {
+        disableGridEventListeners();
+        setTimeout(() => {
+            alert(`🎉 关卡 ${currentLevel} 完成！ 🎉`);
+            currentLevel++;
+            startGame();
+        }, 500);
+    }
+
+    // --- Visual Feedback Functions ---
+    function clearSelectionVisuals(clearTransform=!1){const cellsToClear=gridContainer.querySelectorAll(".grid-cell.selected, .grid-cell.error");cellsToClear.forEach((el=>{el.classList.remove("selected","error"),clearTransform&&(el.style.transform="")}))}
+    function markSelectionError(cells){cells.forEach((sc=>{sc&&sc.element&&sc.element.classList.add("error")})),setTimeout((()=>{cells.forEach((sc=>{sc&&sc.element&&(sc.element.classList.remove("error","selected"),sc.element.style.transform="")}))}),350)}
+    function markWordAsFound(cells){cells.forEach((sc=>{sc&&sc.element&&(sc.element.classList.remove("selected"),sc.element.classList.add("found"),sc.element.style.transform="")}))}
+
+    // --- UI Update Functions ---
+    function updateScore() { scoreElement.textContent = foundWords.size; }
+    function updateFoundWordsList() {
+        foundWordsList.innerHTML = '';
+        const sortedFoundWords = Array.from(foundWords).sort();
+        sortedFoundWords.forEach(word => { const li = document.createElement('li'); li.textContent = word; foundWordsList.appendChild(li); });
+    }
+
+    // --- Timer Functions ---
+    function startTimer(){currentLevel===1&&(elapsedTime=0),stopTimer(),updateTimerDisplay(),timerElement.classList.remove("tick"),timerInterval=setInterval((()=>{elapsedTime++,updateTimerDisplay(),timerElement.classList.add("tick"),setTimeout((()=>timerElement.classList.remove("tick")),150)}),1e3)}
+    function stopTimer(){clearInterval(timerInterval),timerInterval=null,timerElement.classList.remove("tick")}
+    function resetTimer(){stopTimer(),elapsedTime=0,updateTimerDisplay()}
+    function formatTime(timeInSeconds){const minutes=Math.floor(timeInSeconds/60),seconds=timeInSeconds%60;return`${minutes.toString().padStart(2,"0")}:${seconds.toString().padStart(2,"0")}`}
+    function updateTimerDisplay(){timerElement.textContent=formatTime(elapsedTime)}
+
+    // --- Hint Functionality --- <<< NEW SECTION
+    function showHint() {
+        // Check global flag first
+        if (!HINTS_ENABLED) {
+            console.warn("Hints are disabled globally.");
+            // Optionally provide feedback to user? alert("提示功能已禁用。");
+            return;
+        }
+
+        // Check if there are words placed and not all are found
+        if (!placedWords || placedWords.length === 0 || foundWords.size === placedWords.length) {
+            alert("所有单词都已找到或没有可提示的单词！");
+            hintBtn.disabled = true; // Disable button if no hints possible
+            return;
+        }
+
+        // Find words that are placed but not yet in the foundWords Set
+        const unfoundWords = placedWords.filter(pw => !foundWords.has(pw.word));
+
+        if (unfoundWords.length === 0) {
+            // Should be covered by the initial check, but good safety
+            alert("没有更多可提示的单词了。");
+            hintBtn.disabled = true;
+            return;
+        }
+
+        // Select a random unfound word
+        const randomIndex = Math.floor(Math.random() * unfoundWords.length);
+        const wordToHint = unfoundWords[randomIndex].word;
+
+        // Display the hint (using alert for simplicity)
+        alert(`提示: 试着找找单词 "${wordToHint}"`);
+
+        // Consider adding a cost or limit to hints in a full game
+    }
+
+    function updateHintButtonState() {
+        if (!hintBtn) return; // Exit if button doesn't exist
+
+        if (!HINTS_ENABLED) {
+            hintBtn.style.display = 'none'; // Hide button entirely if disabled globally
+            return;
+        }
+
+        // Show button if hints enabled
+        hintBtn.style.display = 'inline-block';
+
+        // Disable button if no words placed or all words found
+        const canHint = placedWords && placedWords.length > 0 && foundWords.size < placedWords.length;
+        hintBtn.disabled = !canHint;
+        hintBtn.title = canHint ? "显示一个未找到的单词" : "所有单词已找到";
+    }
+    // --- End of Hint Functionality ---
+
+    // --- Game Initialization and Control ---
+    function initGame() {
+        // Attach button listeners ONCE
+        newGameBtn.addEventListener('click', () => {
+            if (totalWordsFoundAcrossLevels > 0 || elapsedTime > 0) {
+                if (confirm("重新开始游戏将丢失所有进度。确定吗？")) resetGame();
+            } else { resetGame(); }
+        });
+
+        // <<< Add Hint Button Listener >>>
+        if (hintBtn) { // Check if button exists
+             hintBtn.addEventListener('click', showHint);
+        } else if (HINTS_ENABLED) {
+             console.warn("Hint button element not found, but hints are enabled.");
+        }
+
+        // Conditionally display hint button based on global setting
+        updateHintButtonState();
+
+        // Start the first game
+        startGame();
+    }
+
+    function resetGame() {
+        console.log("Resetting game to Level 1...");
+        currentLevel = 1;
+        totalWordsFoundAcrossLevels = 0;
+        resetTimer();
+        startGame(); // Starts Level 1
+    }
+
+    function startGame() {
+        console.log(`Starting Level ${currentLevel}...`);
+        // stopTimer(); // Optional: pause timer during generation
+
+        // Generate everything for the current level
+        generateGrid(); // This now also calls updateHintButtonState
+
+        // Setup listeners and start timer
+        setupGridEventListeners();
+        gridContainer.style.cursor = 'pointer';
+        startTimer(); // Starts/resumes cumulative timer
+    }
+
+    // --- Initial Load ---
+    initGame();
+
+}); // End DOMContentLoaded
+
+    </script>
+</body>
+</html>
