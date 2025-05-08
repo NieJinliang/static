@@ -1,553 +1,529 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>快来找单词 (Progressive)</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>快来找单词 - 突出操作</title>
     <style>
-        /* Basic Reset */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+        :root {
+            --bg-color: #2c3e50;
+            --panel-bg-color: #34495e;
+            --cell-bg-color: #4a627a;
+            --cell-border-color: #526f8c;
+            --text-color: #ecf0f1;
+            --text-muted-color: #bdc3c7; /* 更柔和的文本颜色 */
+            --accent-color-1: #1abc9c; /* 选中 */
+            --accent-color-2: #2ecc71; /* 找到 */
+            --accent-color-3: #f1c40f; /* 提示 */
+            --button-bg-color: #3498db;
+            --button-hover-color: #2980b9;
+            --danger-color: #e74c3c;
 
-body {
-    font-family: 'Nunito', sans-serif;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    min-height: 100vh;
-    padding: 20px;
-    background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%);
-    color: #37474f;
-    touch-action: none;
-}
+            --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            --border-radius: 8px;
+            --shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            --light-shadow: 0 2px 8px rgba(0,0,0,0.1); /* 较轻的阴影 */
+        }
 
-.main-container {
-    width: 100%;
-    max-width: 700px; /* Increased max width slightly */
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px; /* Adjusted gap */
-}
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
-h1 {
-    color: #00796b;
-    font-size: 2.5em;
-    margin-bottom: 0; /* Reduced margin */
-}
+        body {
+            font-family: var(--font-family);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 10px; /* Reduced body padding */
+            touch-action: manipulation;
+        }
 
-h2 {
-    color: #00796b;
-    font-size: 1.3em; /* Smaller heading for found words */
-    margin-bottom: 10px;
-    text-align: center;
-}
+        .game-title { /* Renamed h1 to a class for more control */
+            color: var(--accent-color-1);
+            margin-bottom: 15px;
+            font-size: clamp(1.8em, 5vw, 2.2em);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            text-align: center;
+        }
 
-/* New Stats Bar Style */
-.game-stats {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-around;
-    align-items: center;
-    width: 100%;
-    background: rgba(255, 255, 255, 0.85);
-    padding: 10px 15px;
-    border-radius: 10px;
-    box-shadow: 0 3px 10px rgba(0, 121, 107, 0.1);
-    gap: 10px 20px; /* Row and column gap */
-}
+        .game-wrapper {
+            display: flex;
+            flex-direction: column; /* Main layout: Title, Grid, Controls/Stats */
+            align-items: center;
+            width: 100%;
+            max-width: 900px;
+            gap: 15px;
+        }
 
-.stat-item {
-    font-size: 1.1em;
-    font-weight: bold;
-    color: #546e7a;
-    text-align: center;
-    background-color: #e0f2f1; /* Light background for each stat */
-    padding: 5px 10px;
-    border-radius: 6px;
-}
+        /* Grid Area - Now takes more prominence */
+        .grid-area-wrapper {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            background-color: var(--panel-bg-color);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 10px; /* Padding around the grid itself */
+        }
 
-#timer, #current-level, #score, #total-words, #total-score-all-levels {
-    color: #00695c; /* Darker green for stat values */
-    display: inline-block; /* Prevents breaking */
-    min-width: 25px; /* Ensure some space */
-}
+        #grid-container {
+            display: grid;
+            /* border: 2px solid var(--accent-color-1); */ /* Border removed, wrapper has bg */
+            background-color: var(--panel-bg-color); /* Can be same as wrapper or slightly different */
+            border-radius: calc(var(--border-radius) - 4px); /* Inner radius */
+            touch-action: none;
+            user-select: none;
+            overflow: hidden;
+            /* Max width/height ensures it doesn't get too large on desktop,
+               while remaining responsive on mobile. Aspect ratio can be good too. */
+            max-width: 500px; /* Example max size, adjust as needed */
+            max-height: 500px;
+            width: 100%; /* Takes up available space in wrapper */
+            aspect-ratio: 1 / 1; /* Keep it square, good for grids */
+        }
 
-#timer {
-    color: #d84315; /* Keep timer color distinct */
-    min-width: 60px;
-    background-color: transparent; /* Remove timer specific bg */
-    padding: 0;
-    transition: transform 0.15s ease-in-out;
-}
-#timer.tick { /* Use tick for visual feedback on timer update */
-    transform: scale(1.05);
-}
 
-/* Controls Bar Style */
-.game-controls {
-    width: 100%;
-    display: flex;
-    justify-content: center; /* Center the button(s) */
-    gap: 15px; /* Add gap between buttons */
-    margin-bottom: 10px; /* Space before grid */
-}
+        .grid-cell {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: var(--cell-bg-color);
+            border: 1px solid var(--cell-border-color);
+            border-radius: 4px;
+            font-size: clamp(14px, 4vw, 20px);
+            font-weight: bold;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background-color 0.15s ease-in-out, transform 0.1s ease;
+            color: var(--text-color);
+        }
+        /* Cell states from previous CSS remain the same */
+        .grid-cell.selected { background-color: var(--accent-color-1); color: var(--bg-color); transform: scale(1.1); box-shadow: 0 0 10px var(--accent-color-1); z-index: 10; }
+        .grid-cell.selected-error { background-color: var(--danger-color) !important; transform: scale(0.9); }
+        .grid-cell.found { background-color: var(--accent-color-2); color: var(--bg-color); animation: foundPop 0.3s ease-out; }
+        .grid-cell.hint { background-color: var(--accent-color-3); color: var(--bg-color); animation: pulseHint 1.2s infinite ease-in-out; box-shadow: 0 0 15px var(--accent-color-3); }
+        @keyframes foundPop { 0% { transform: scale(0.8); opacity: 0.6; } 70% { transform: scale(1.15); } 100% { transform: scale(1); opacity: 1; } }
+        @keyframes pulseHint { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.05); } 100% { opacity: 1; transform: scale(1); } }
 
-button {
-    padding: 10px 25px; /* Slightly larger button */
-    font-size: 1.1em;
-    font-weight: bold;
-    font-family: 'Nunito', sans-serif;
-    cursor: pointer;
-    border: none;
-    border-radius: 8px;
-    background-color: #00897b;
-    color: white;
-    transition: background-color 0.2s ease, transform 0.1s ease;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
-}
-button:hover {
-    background-color: #00695c;
-    transform: translateY(-1px);
-}
-button:active {
-    transform: translateY(0px);
-}
 
-/* Style for the Hint button */
-#hint-btn {
-    background-color: #5c6bc0; /* Indigo color for hint */
-}
-#hint-btn:hover {
-    background-color: #3f51b5;
-}
+        /* Controls and Stats Area - Weakened visual hierarchy */
+        .bottom-panel {
+            width: 100%;
+            display: flex;
+            flex-direction: column; /* Stack controls and stats/wordlist */
+            gap: 15px;
+            max-width: 500px; /* Match grid max-width for alignment */
+        }
 
-/* --- Grid container needs dynamic columns/rows via JS --- */
-.grid-container {
-    display: grid;
-    /* grid-template-columns/rows set by JS */
-    width: 100%;
-    max-width: 600px; /* Can adjust, but aspect-ratio keeps it contained */
-    aspect-ratio: 1 / 1;
-    border: 3px solid #80cbc4;
-    background-color: #ffffff;
-    box-shadow: 0 5px 20px rgba(0, 105, 92, 0.15);
-    border-radius: 8px;
-    position: relative;
-    user-select: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    overflow: hidden;
-    /* Transition for grid size change (optional) */
-    /* transition: width 0.3s ease, max-width 0.3s ease; */
-}
+        .game-controls { /* Container for main action buttons */
+            display: flex;
+            gap: 10px;
+            justify-content: space-around; /* Spread buttons */
+        }
+        .game-controls button {
+            flex-grow: 1; /* Allow buttons to share space */
+            margin-top: 0; /* Remove default top margin */
+        }
 
-.grid-cell {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    /* Dynamic font size based on grid size can be complex with clamp alone. */
-    /* Consider adjusting base size or using JS if needed, */
-    /* but this should work reasonably well */
-    font-size: clamp(12px, 28 / var(--grid-size, 10) * 1vmin, 30px);
-    font-weight: bold;
-    border: 1px solid #e0f2f1;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275),
-                background-color 0.2s ease-out,
-                box-shadow 0.2s ease-out;
-    background-color: #fff;
-    position: relative;
-    color: #263238;
-}
-.grid-cell:not(.selected):not(.found):hover {
-    background-color: #e0f7fa;
-}
+        .stats-and-wordlist {
+            display: flex;
+            gap: 15px;
+            width: 100%;
+            flex-wrap: wrap; /* Allow wrapping on small screens */
+        }
 
-/* Selection States (Mostly same as before) */
-.grid-cell.selected {
-    background-color: #4dd0e1;
-    color: white;
-    transform: scale(1.2);
-    box-shadow: 0 0 10px rgba(0, 188, 212, 0.6);
-    border-color: transparent;
-    z-index: 10;
-}
-.grid-cell.error {
-    background-color: #ef5350;
-    color: white;
-    animation: shake 0.35s cubic-bezier(.36,.07,.19,.97) both;
-}
-@keyframes shake { /* Same shake animation */
-  10%, 90% { transform: translateX(-2px); }
-  20%, 80% { transform: translateX(3px); }
-  30%, 50%, 70% { transform: translateX(-4px); }
-  40%, 60% { transform: translateX(4px); }
-}
-.grid-cell.found {
-    background-color: #a5d6a7;
-    color: #1b5e20;
-    cursor: default;
-    animation: pulse-found 0.6s ease;
-}
-@keyframes pulse-found { /* Same pulse animation */
-    0% { transform: scale(1); }
-    50% { transform: scale(1.08); background-color: #81c784;}
-    100% { transform: scale(1); background-color: #a5d6a7;}
-}
+        .stats-board, .word-list-board {
+            background-color: transparent; /* Weaker background for stats */
+            padding: 10px; /* Reduced padding */
+            border-radius: var(--border-radius);
+            box-shadow: none; /* Removed shadow for weaker emphasis */
+            border: 1px solid var(--cell-border-color); /* Subtle border */
+            flex: 1; /* Allow them to share space */
+            min-width: 180px; /* Prevent them from becoming too narrow */
+        }
+        .stats-board:hover, .word-list-board:hover {
+             transform: none; /* Remove hover transform */
+             border-color: var(--accent-color-1); /* Highlight border on hover */
+        }
 
-.found-words-container {
-    width: 100%;
-    background: rgba(255, 255, 255, 0.7);
-    padding: 15px;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0, 121, 107, 0.08);
-}
-#found-words-list { /* Same style */
-    list-style: none; padding: 0; display: flex; flex-wrap: wrap;
-    gap: 8px 12px; justify-content: center;
-}
-#found-words-list li { /* Same style */
-    background-color: #b2dfdb; color: #004d40; padding: 6px 12px;
-    border-radius: 15px; font-size: 1em; font-weight: bold;
-    text-transform: uppercase; box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-}
+        .stats-board h3, .word-list-board h3 {
+            margin-top: 0;
+            color: var(--accent-color-2);
+            border-bottom: 1px solid var(--cell-border-color);
+            padding-bottom: 6px;
+            margin-bottom: 8px;
+            font-size: 1.1em; /* Slightly smaller title */
+        }
+
+        .stats-board div {
+             color: var(--text-muted-color); /* Muted text for stats details */
+             font-size: 0.9em; /* Smaller font for stats items */
+             margin: 5px 0;
+        }
+        .stats-board span {
+            font-weight: bold;
+            color: var(--text-color);
+        }
+
+        #word-list {
+            list-style: none;
+            padding: 0;
+            max-height: 120px; /* Reduced height */
+            overflow-y: auto;
+            font-size: 0.9em;
+        }
+        #word-list::-webkit-scrollbar { width: 6px; }
+        #word-list::-webkit-scrollbar-track { background: var(--cell-bg-color); border-radius: 3px; }
+        #word-list::-webkit-scrollbar-thumb { background: var(--accent-color-1); border-radius: 3px; }
+        #word-list::-webkit-scrollbar-thumb:hover { background: var(--button-hover-color); }
+
+        #word-list li {
+            padding: 4px 5px;
+            color: var(--text-muted-color);
+            border-radius: 3px;
+            margin-bottom: 3px;
+        }
+        #word-list li.found {
+            text-decoration: line-through;
+            color: var(--cell-border-color);
+            background-color: rgba(46, 204, 113, 0.05); /* Very faint bg */
+        }
+
+        button { /* General button styles, game-controls buttons might override */
+            padding: 12px 15px;
+            font-size: 1em;
+            font-weight: bold;
+            background-color: var(--button-bg-color);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+            width: 100%;
+            margin-top: 10px;
+            box-shadow: var(--light-shadow);
+        }
+        button:hover:not(:disabled) {
+            background-color: var(--button-hover-color);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+        button:active:not(:disabled) {
+            transform: translateY(1px);
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+        }
+        button:disabled {
+            background-color: #7f8c8d;
+            cursor: not-allowed;
+            opacity: 0.6;
+            box-shadow: none;
+        }
+        
+        /* Responsive adjustments */
+        @media (min-width: 769px) { /* Desktop-like layout */
+            .game-wrapper {
+                flex-direction: row; /* Grid on left, controls/stats on right */
+                align-items: flex-start; /* Align to top */
+                gap: 20px;
+            }
+            .grid-area-wrapper {
+                flex-grow: 2; /* Grid takes more space */
+                flex-shrink: 1;
+                max-width: 60%; /* Grid takes up to 60% of wrapper width */
+            }
+             #grid-container {
+                /* Max width/height already set, aspect-ratio helps here */
+            }
+            .bottom-panel {
+                flex-grow: 1; /* Controls/stats take remaining space */
+                flex-shrink: 2;
+                max-width: 35%; /* Max width for the side panel */
+                /* position: sticky; top: 20px; */ /* Optional: make side panel sticky */
+            }
+        }
+
+        @media (max-width: 768px) { /* Tablet and Mobile */
+            body { padding: 10px; }
+            .game-title { font-size: 1.8em; margin-bottom: 10px; }
+            .grid-area-wrapper { padding: 8px; }
+            #grid-container {
+                max-width: 100%; /* Allow grid to fill its wrapper */
+                max-height: calc(100vw - 40px); /* Max height based on viewport width for mobile */
+            }
+            .bottom-panel { max-width: 100%; } /* Panel takes full width */
+        }
+
+        @media (max-width: 480px) { /* Smaller Mobile */
+            .game-title { font-size: 1.5em; }
+            .stats-board h3, .word-list-board h3 { font-size: 1em; }
+            .stats-board div, #word-list li { font-size: 0.85em; }
+            button { padding: 10px 12px; font-size: 0.95em; }
+            .game-controls { flex-direction: column; } /* Stack buttons on very small screens */
+            .stats-and-wordlist { flex-direction: column; } /* Stack stats and word list */
+            .stats-board, .word-list-board { min-width: unset; width: 100%; }
+            #word-list { max-height: 100px; }
+        }
 
     </style>
 </head>
 <body>
-    <div class="main-container">
-        <h1>快来找单词</h1>
+    <div class="game-wrapper">
+        <h1 class="game-title">快来找单词</h1>
 
-        <div class="game-stats">
-             <div class="stat-item">
-                 关卡: <span id="current-level">1</span>
-            </div>
-            <div class="stat-item">
-                用时: <span id="timer">00:00</span>
-            </div>
-            <div class="stat-item">
-                本关: <span id="score">0</span> / <span id="total-words">0</span>
-            </div>
-            <div class="stat-item">
-                 累计单词: <span id="total-score-all-levels">0</span>
-            </div>
+        <div class="grid-area-wrapper">
+            <div id="grid-container"></div>
         </div>
 
-        <div class="game-controls">
-            <button id="hint-btn" title="显示一个未找到的单词">提示</button> <!-- Added Hint Button -->
-            <button id="new-game-btn" title="重新开始第一关">新游戏</button>
-       </div>
-
-
-        <div id="game-grid" class="grid-container">
-            <!-- Grid cells dynamically generated -->
-            <!-- Grid size set via JS -->
+        <div class="bottom-panel">
+            <div class="game-controls">
+                <button id="start-button">开始游戏</button>
+                <button id="hint-button" disabled>提示</button>
+            </div>
+            <div class="stats-and-wordlist">
+                <div class="stats-board">
+                    <h3>游戏统计</h3>
+                    <div id="timer">时间: <span>0s</span></div>
+                    <div id="level-info">关卡: <span>1</span></div>
+                    <div id="words-count">本关单词: <span>0 / 0</span></div>
+                    <div id="total-words-found">总找到: <span>0</span></div>
+                    <div id="total-levels-completed">总关卡: <span>0</span></div>
+                </div>
+                <div class="word-list-board">
+                    <h3>本关词汇</h3>
+                    <ul id="word-list"></ul>
+                </div>
+            </div>
         </div>
+    </div>
 
-        <div class="found-words-container">
-            <h2>本关找到的单词:</h2>
-            <ul id="found-words-list">
-                <!-- Found words listed here -->
-            </ul>
-        </div>
-    </div> <!-- End of main-container -->
-
-    <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2/dist/fuse.min.js"></script>
-    <!-- <script src="script.js"></script> -->
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-    // --- Constants and Config ---
-    const HINTS_ENABLED = true; // <<< Control parameter
-    const BASE_GRID_SIZE = 3;
-    const BASE_TARGET_WORDS = 4;
-    const GRID_INCREMENT = 1;
-    const WORD_COUNT_MULTIPLIER = 1.5;
-    const MIN_WORD_LENGTH = 3;
-
-    // --- Hardcoded Word List ---
-    const DICTIONARY = [ /* ... Keep your dictionary ... */
-        "apple", "banana", "orange", "grape", "lemon", "melon", "peach", "berry", "kiwi", "lime",
-        "search", "word", "grid", "game", "play", "find", "letter", "puzzle", "link", "list",
-        "code", "script", "style", "html", "java", "query", "mouse", "touch", "cell", "data",
-        "timer", "score", "time", "level", "easy", "hard", "swift", "fast", "quick", "move",
-        "house", "table", "chair", "light", "plant", "water", "earth", "fire", "door", "wall",
-        "wind", "cloud", "rain", "snow", "star", "moon", "sun", "blue", "red", "line", "draw",
-        "green", "black", "white", "happy", "smile", "fun", "zone", "area", "path", "row", "calm"
-    ];
-
-    // --- DOM Elements ---
-    const gridContainer = document.getElementById('game-grid');
-    const timerElement = document.getElementById('timer');
-    const currentLevelElement = document.getElementById('current-level');
-    const scoreElement = document.getElementById('score');
-    const totalWordsElement = document.getElementById('total-words');
-    const totalScoreAllLevelsElement = document.getElementById('total-score-all-levels');
-    const foundWordsList = document.getElementById('found-words-list');
-    const newGameBtn = document.getElementById('new-game-btn');
-    const hintBtn = document.getElementById('hint-btn'); // <<< Get Hint Button
-
-    // --- Game State Variables ---
-    let currentLevel = 1;
-    let totalWordsFoundAcrossLevels = 0;
-    let elapsedTime = 0;
-    let timerInterval = null;
-    let currentGridSize = BASE_GRID_SIZE;
-    let currentTargetWordCount = BASE_TARGET_WORDS;
-    let currentMaxWordLength = BASE_GRID_SIZE;
-    let grid = [];
-    let placedWords = [];
-    let fuseInstance = null;
-    let foundWords = new Set();
-    let isDragging = false;
-    let selectedCells = [];
-    let currentPath = [];
-
-    // --- Difficulty Calculation ---
-    function calculateGridSize(level) { return BASE_GRID_SIZE + (level - 1) * GRID_INCREMENT; }
-    function calculateTargetWordCount(level) { return Math.max(BASE_TARGET_WORDS, Math.floor(BASE_TARGET_WORDS * Math.pow(WORD_COUNT_MULTIPLIER, level - 1))); }
-
-    // --- Grid Generation ---
-    function generateGrid() {
-        currentGridSize = calculateGridSize(currentLevel);
-        currentTargetWordCount = calculateTargetWordCount(currentLevel);
-        currentMaxWordLength = currentGridSize;
-        console.log(`Level ${currentLevel}: Size ${currentGridSize}x${currentGridSize}, Target Words ${currentTargetWordCount}, Max Length ${currentMaxWordLength}`);
-        grid = Array(currentGridSize).fill(null).map(() => Array(currentGridSize).fill(null));
-        placedWords = [];
-        foundWords.clear();
-        fuseInstance = null;
-        gridContainer.innerHTML = '';
-        foundWordsList.innerHTML = '';
-        gridContainer.style.gridTemplateColumns = `repeat(${currentGridSize}, minmax(25px, 1fr))`;
-        gridContainer.style.gridTemplateRows = `repeat(${currentGridSize}, minmax(25px, 1fr))`;
-        gridContainer.style.setProperty('--grid-size', currentGridSize);
-
-        const potentialWords = DICTIONARY.filter(word => word.length >= MIN_WORD_LENGTH && word.length <= currentMaxWordLength);
-        if (potentialWords.length < currentTargetWordCount) {
-            console.warn(`Not enough suitable words in dictionary (${potentialWords.length}) for level ${currentLevel}.`);
-        }
-        embedWords(potentialWords);
-        fillRemainingCells();
-        createGridElements();
-
-        const wordsForFuse = placedWords.map(pw => pw.word);
-        if (wordsForFuse.length > 0) {
-            const fuseOptions = { includeScore: false, threshold: 0.0 };
-            fuseInstance = new Fuse(wordsForFuse, fuseOptions);
-        } else {
-            console.error("No words were embedded for this level!");
-        }
-        scoreElement.textContent = '0';
-        totalWordsElement.textContent = placedWords.length;
-        currentLevelElement.textContent = currentLevel;
-        totalScoreAllLevelsElement.textContent = totalWordsFoundAcrossLevels;
-        console.log(`Grid generated for Level ${currentLevel}. Hidden words: ${placedWords.length > 0 ? wordsForFuse.join(', ') : 'None'}`);
-
-        // <<< Update Hint Button State >>>
-        updateHintButtonState();
+    // Placeholder for Fuse.js
+    if (typeof Fuse === 'undefined') {
+        console.warn("Fuse.js not embedded. Using mock Fuse for basic functionality.");
+        window.Fuse = function(list, options) { /* ... (mock Fuse code as before) ... */ 
+            this.list = list; this.options = options || {}; this.search = function(pattern) {
+            if (!this.options.keys) return []; const threshold = this.options.threshold || 0.3; 
+            return this.list.filter(item => { for (const key of this.options.keys) { const value = item[key];
+            if (typeof value === 'string') { let commonPrefix = 0; for(let i=0; i< Math.min(value.length, pattern.length); i++){
+            if(value[i].toLowerCase() === pattern[i].toLowerCase()) commonPrefix++; else break; }
+            if ( (pattern.length - commonPrefix) / pattern.length <= threshold ) return true;
+            if (value.toLowerCase().includes(pattern.toLowerCase())) return true; } } return false;
+            }).map(item => ({ item })); };
+        };
     }
+    </script>
 
-    // --- embedWords, canPlaceWord, placeWord, fillRemainingCells, createGridElements ---
-    // --- getRandomLetter, shuffle ---
-    // (No changes needed in these core logic functions)
-     function embedWords(availableWords){const directions=[{dr:0,dc:1},{dr:1,dc:0},{dr:1,dc:1},{dr:1,dc:-1},{dr:0,dc:-1},{dr:-1,dc:0},{dr:-1,dc:-1},{dr:-1,dc:1}];let wordsToEmbed=shuffle(availableWords),embeddedCount=0,attempts=0,maxAttempts=Math.max(wordsToEmbed.length*10,currentGridSize*currentGridSize),actualTarget=Math.min(currentTargetWordCount,availableWords.length);while(embeddedCount<actualTarget&&attempts<maxAttempts&&wordsToEmbed.length>0){const word=wordsToEmbed.pop().toUpperCase();attempts++;if(word.length>currentGridSize)continue;let placed=!1,shuffledDirections=shuffle([...directions]),maxPlaceAttempts=currentGridSize*currentGridSize;for(let placeAttempt=0;placeAttempt<maxPlaceAttempts&&!placed;placeAttempt++){const startRow=Math.floor(Math.random()*currentGridSize),startCol=Math.floor(Math.random()*currentGridSize),direction=shuffledDirections[placeAttempt%shuffledDirections.length];canPlaceWord(word,startRow,startCol,direction)&&(placeWord(word,startRow,startCol,direction,embeddedCount),placed=!0,embeddedCount++)}}console.log(`Attempted to embed words for level ${currentLevel}. Successfully embedded: ${embeddedCount}/${actualTarget}`),embeddedCount<actualTarget&&console.warn(`Could only embed ${embeddedCount} words. Target was ${actualTarget}.`)} // Minified
-     function canPlaceWord(word,startRow,startCol,direction){let currentRow=startRow,currentCol=startCol;for(let i=0;i<word.length;i++){if(currentRow<0||currentRow>=currentGridSize||currentCol<0||currentCol>=currentGridSize)return!1;const existingCell=grid[currentRow]?.[currentCol];if(existingCell!==null&&existingCell.letter!==word[i])return!1;currentRow+=direction.dr,currentCol+=direction.dc}return!0} // Minified
-     function placeWord(word,startRow,startCol,direction,wordId){let currentRow=startRow,currentCol=startCol;const path=[];let crossOccurred=!1;for(let i=0;i<word.length;i++){const letter=word[i];path.push({row:currentRow,col:currentCol});if(currentRow>=0&&currentRow<currentGridSize&&currentCol>=0&&currentCol<currentGridSize){if(grid[currentRow][currentCol]===null)grid[currentRow][currentCol]={letter:letter,isWordPart:!0,wordId:[wordId]};else{grid[currentRow][currentCol].isWordPart=!0,grid[currentRow][currentCol].wordId.includes(wordId)||grid[currentRow][currentCol].wordId.push(wordId),crossOccurred=!0}}else{console.error(`Error placing word "${word}" - Out of bounds at ${currentRow}, ${currentCol}`);return}currentRow+=direction.dr,currentCol+=direction.dc}placedWords.push({word:word,path:path,crossed:crossOccurred})} // Minified
-     function fillRemainingCells(){for(let r=0;r<currentGridSize;r++)for(let c=0;c<currentGridSize;c++)grid[r]?.[c]===null&&(grid[r]||(grid[r]=[]),grid[r][c]={letter:getRandomLetter(),isWordPart:!1,wordId:[]})} // Minified
-     function createGridElements(){gridContainer.innerHTML="";for(let r=0;r<currentGridSize;r++)for(let c=0;c<currentGridSize;c++){const cellElement=document.createElement("div");cellElement.classList.add("grid-cell"),cellElement.dataset.row=r,cellElement.dataset.col=c,cellElement.textContent=grid[r]?.[c]?.letter??"?",gridContainer.appendChild(cellElement),grid[r]?.[c]?grid[r][c].element=cellElement:console.error(`Grid data missing at [${r}][${c}] during element creation`)}} // Minified
-     function getRandomLetter(){const alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZ",vowels="AEIOU",highFreqConsonants="STRNL",weights={};let totalWeight=0;for(const letter of alphabet){let weight=1;vowels.includes(letter)?weight*=1.3:highFreqConsonants.includes(letter)&&(weight*=1.2),weights[letter]=weight,totalWeight+=weight}let random=Math.random()*totalWeight;for(const letter of alphabet){if(random<weights[letter])return letter;random-=weights[letter]}return"E"} // Minified
-     function shuffle(array){let currentIndex=array.length,randomIndex;while(currentIndex!==0)randomIndex=Math.floor(Math.random()*currentIndex),currentIndex--,[array[currentIndex],array[randomIndex]]=[array[randomIndex],array[currentIndex]];return array} // Minified
+    <script>
+        // --- JavaScript (Identical to the previous "酷炫版" version) ---
+        // All JS functions: VOWELS, HIGH_FREQ_CONSONANTS, commonWords, game object, dom object,
+        // Trie, fisherYatesShuffle, getWeightedRandomLetter, createLetterMatrix, embedWords,
+        // canPlace, tryPlaceWordStraight, tryPlaceWordLShape, renderGrid, getCellFromEvent,
+        // handleInteractionStart, handleInteractionMove, handleInteractionEnd,
+        // addCellToSelection, removeLastCellFromSelection, clearSelectionHighlights,
+        // validateSelection, checkPath, markWordAsFound, startTimer, stopTimer,
+        // updateStatsDisplay, populateWordList, calculateLevelConfig, giveHint,
+        // startGame, checkLevelCompletion, initEventListeners, DOMContentLoaded.
+        // ... (Paste the full JavaScript from the previous response here) ...
+        // For brevity, I'm not repeating the entire JS block. 
+        // Please use the JS from the "酷炫版" response.
+        // Ensure the DOM references in the `dom` object match any ID changes if made.
+        // In this case, HTML structure for controls/stats changed, but IDs for elements like
+        // timer, level-info etc., are assumed to be the same.
+        // If you had a `controls-stats-area` div before and changed its ID or structure,
+        // and your JS was relying on it, you might need small JS tweaks. But for this example,
+        // the specific elements with IDs for stats are still there.
 
-    // --- Interaction Handling ---
-    // (setupGridEventListeners, disableGridEventListeners, handlePointerDown,
-    // handlePointerMove, handlePointerUp, handlePointerLeave, addCellToSelection,
-    // getCellCoords, isAdjacent, isCollinear remain the same)
-    function setupGridEventListeners(){gridContainer.removeEventListener("pointerdown",handlePointerDown),gridContainer.removeEventListener("pointermove",handlePointerMove),gridContainer.removeEventListener("pointerup",handlePointerUp),gridContainer.removeEventListener("pointerleave",handlePointerLeave),gridContainer.addEventListener("pointerdown",handlePointerDown),gridContainer.addEventListener("pointermove",handlePointerMove),gridContainer.addEventListener("pointerup",handlePointerUp),gridContainer.addEventListener("pointerleave",handlePointerLeave)}
-    function disableGridEventListeners(){gridContainer.removeEventListener("pointerdown",handlePointerDown),gridContainer.removeEventListener("pointermove",handlePointerMove),gridContainer.removeEventListener("pointerup",handlePointerUp),gridContainer.removeEventListener("pointerleave",handlePointerLeave),gridContainer.style.cursor="default"}
-    function handlePointerDown(e){const targetCell=e.target.closest(".grid-cell");targetCell&&gridContainer.contains(targetCell)&&(isDragging=!0,clearSelectionVisuals(!0),selectedCells=[],currentPath=[],addCellToSelection(targetCell),e.preventDefault())}
-    function handlePointerMove(e){if(!isDragging)return;const elementUnderPointer=document.elementFromPoint(e.clientX,e.clientY),targetCell=elementUnderPointer?elementUnderPointer.closest(".grid-cell"):null;if(targetCell&&gridContainer.contains(targetCell)){const lastSelected=selectedCells.length>0?selectedCells[selectedCells.length-1]:null;(!lastSelected||isAdjacent(getCellCoords(targetCell),getCellCoords(lastSelected.element)))&&addCellToSelection(targetCell),e.preventDefault()}}
-    function handlePointerUp(e){isDragging&&(isDragging=!1,validateSelection())}
-    function handlePointerLeave(e){if(isDragging){const gridRect=gridContainer.getBoundingClientRect();(e.clientX<gridRect.left||e.clientX>gridRect.right||e.clientY<gridRect.top||e.clientY>gridRect.bottom)&&(isDragging=!1,validateSelection())}}
-    function addCellToSelection(cellElement){const row=parseInt(cellElement.dataset.row),col=parseInt(cellElement.dataset.col),currentCoords={row:row,col:col};if(currentPath.some((p=>p.row===row&&p.col===col)))return;if(currentPath.length>=2){const first=currentPath[0],second=currentPath[1];if(!isCollinear(first,second,currentCoords))return}const lastCellCoords=currentPath.length>0?currentPath[currentPath.length-1]:null;if(lastCellCoords&&!isAdjacent(currentCoords,lastCellCoords))return;cellElement.classList.add("selected"),selectedCells.push({row:row,col:col,element:cellElement}),currentPath.push(currentCoords)}
-    function getCellCoords(cellElement){const row=cellElement.dataset.row!==void 0?parseInt(cellElement.dataset.row):-1,col=cellElement.dataset.col!==void 0?parseInt(cellElement.dataset.col):-1;return{row:row,col:col}}
-    function isAdjacent(cell1,cell2){if(!cell1||!cell2||cell1.row===-1||cell2.row===-1)return!1;const dr=Math.abs(cell1.row-cell2.row),dc=Math.abs(cell1.col-cell2.col);return dr<=1&&dc<=1&&!(dr===0&&dc===0)}
-    function isCollinear(p1,p2,p3){if(!p1||!p2||!p3)return!1;const dx1=p2.col-p1.col,dy1=p2.row-p1.row,dx2=p3.col-p1.col,dy2=p3.row-p1.row;return dx1*dy2===dx2*dy1}
+        const VOWELS = "AEIOU";
+        const HIGH_FREQ_CONSONANTS = "STRNL";
+        const ALL_CONSONANTS = "BCDFGHJKLMNPQRSTVWXYZ";
+        const ALL_LETTERS = VOWELS + ALL_CONSONANTS;
 
-    // --- Validation Logic (Updated Level Completion Check) ---
-    function validateSelection() {
-        if (selectedCells.length < MIN_WORD_LENGTH || !fuseInstance) {
-            clearSelectionVisuals(true); selectedCells = []; currentPath = []; return;
-        }
-        let selectedWord = "";
-        try {
-            selectedWord = selectedCells.map(sc => grid[sc.row]?.[sc.col]?.letter ?? '').join('');
-        } catch (error) { console.error("Error constructing word:", error); clearSelectionVisuals(true); selectedCells = []; currentPath = []; return; }
-        selectedWord = selectedWord.toUpperCase();
-        let wordForward = selectedWord, wordBackward = selectedWord.split('').reverse().join(''), isValid = false, foundWordStr = "";
-        const forwardResult = fuseInstance.search(wordForward), backwardResult = fuseInstance.search(wordBackward);
-        if (forwardResult.length > 0 && !foundWords.has(wordForward)) { isValid = true; foundWordStr = wordForward; }
-        else if (backwardResult.length > 0 && !foundWords.has(wordBackward)) { isValid = true; foundWordStr = wordBackward; }
+        const commonWords = [
+            "CAT", "DOG", "SUN", "RUN", "BIG", "RED", "YES", "NOT", "AND", "THE",
+            "APPLE", "BEACH", "BRAIN", "CHAIR", "DANCE", "EARTH", "FROGS", "GRAPE",
+            "HOUSE", "INPUT", "JUICE", "KOALA", "LEMON", "MOUSE", "NURSE", "OCEAN",
+            "PANDA", "QUIET", "ROBOT", "SNAKE", "TIGER", "UNCLE", "VOICE", "WATER",
+            "XENON", "YACHT", "ZEBRA", "HELLO", "WORLD", "GAMES", "HAPPY", "SMILE",
+            "MUSIC", "PIZZA", "FLOWER", "PLANET", "ORANGE", "GREEN", "TABLE", "WINTER",
+            "CODE", "PLAY", "TEST", "LINK", "TEXT", "GRID", "WORD", "FIND", "CELL"
+        ];
 
-        if (isValid) {
-            foundWords.add(foundWordStr);
-            totalWordsFoundAcrossLevels++;
-            markWordAsFound(selectedCells);
-            updateScore();
-            updateFoundWordsList();
-            totalScoreAllLevelsElement.textContent = totalWordsFoundAcrossLevels;
-            updateHintButtonState(); // <<< Update hint button after finding a word
+        const game = {
+            grid: [],
+            gridSize: { rows: 0, cols: 0 },
+            wordsToEmbed: [], 
+            currentLevel: 0,
+            timer: 0,
+            timerInterval: null,
+            selectedCells: [], 
+            isDragging: false,
+            foundWordsThisLevel: 0,
+            totalWordsFound: 0,
+            totalLevelsCompleted: 0,
+            currentTrie: null,
+            fuseInstance: null,
+            levelTargetWordsCount: 0
+        };
 
-            if (placedWords.length > 0 && foundWords.size === placedWords.length) {
-                handleLevelComplete();
+        // DOM references need to be accurate to the new HTML if IDs changed.
+        // Assuming the core element IDs like #timer, #level-info etc. are still the same.
+        const dom = {
+            gridContainer: document.getElementById('grid-container'),
+            timerDisplay: document.querySelector('#timer span'),
+            levelInfoDisplay: document.querySelector('#level-info span'),
+            wordsCountDisplay: document.querySelector('#words-count span'),
+            totalWordsFoundDisplay: document.querySelector('#total-words-found span'), // Corrected this, was "总找到单词"
+            totalLevelsCompletedDisplay: document.querySelector('#total-levels-completed span'), // Corrected this
+            wordListUl: document.getElementById('word-list'),
+            startButton: document.getElementById('start-button'),
+            hintButton: document.getElementById('hint-button'),
+        };
+
+
+        // --- Trie Implementation ---
+        class TrieNode { constructor() { this.children = {}; this.isEndOfWord = false; } }
+        class Trie { constructor() { this.root = new TrieNode(); } insert(word) { let node = this.root; for (const char of word) { if (!node.children[char]) { node.children[char] = new TrieNode(); } node = node.children[char]; } node.isEndOfWord = true; } search(word) { let node = this.root; for (const char of word) { if (!node.children[char]) { return false; } node = node.children[char]; } return node.isEndOfWord; } startsWith(prefix) { let node = this.root; for (const char of prefix) { if (!node.children[char]) { return false; } node = node.children[char]; } return true; } }
+
+        // --- Fisher-Yates Shuffle ---
+        function fisherYatesShuffle(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[array[i], array[j]] = [array[j], array[i]]; } return array; }
+
+        // --- Letter Generation ---
+        function getWeightedRandomLetter() { const VOWEL_WEIGHT = 1.3; const HIGH_FREQ_CONSONANT_WEIGHT = 1.2; const OTHER_CONSONANT_WEIGHT = 1.0; let weightedLetters = []; for (const letter of ALL_LETTERS) { let weight = OTHER_CONSONANT_WEIGHT; if (VOWELS.includes(letter)) { weight = VOWEL_WEIGHT; } else if (HIGH_FREQ_CONSONANTS.includes(letter)) { weight = HIGH_FREQ_CONSONANT_WEIGHT; } for (let i = 0; i < Math.round(weight * 10); i++) { weightedLetters.push(letter); } } return weightedLetters[Math.floor(Math.random() * weightedLetters.length)]; }
+        
+        // --- Grid Generation System ---
+        function createLetterMatrix(rows, cols) { const matrix = []; for (let r = 0; r < rows; r++) { matrix[r] = []; for (let c = 0; c < cols; c++) { matrix[r][c] = { letter: null, occupiedByWord: null, element: null }; } } return matrix; }
+
+        function embedWords() {
+            const { rows, cols } = game.gridSize; game.grid = createLetterMatrix(rows, cols); game.wordsToEmbed = []; let wordsSuccessfullyEmbedded = 0;
+            const potentialWords = fisherYatesShuffle([...commonWords]).filter(w => w.length >= 3 && w.length <= Math.min(8, Math.max(rows, cols)) ).slice(0, game.levelTargetWordsCount * 3);
+            const directions = [ { dr: 0, dc: 1 }, { dr: 1, dc: 0 }, { dr: 0, dc: -1 }, { dr: -1, dc: 0 } ];
+            const lShapeStrategies = [ { p_dir: { dr: 0, dc: 1 }, s_dirs: [{ dr: 1, dc: 0 }, { dr: -1, dc: 0 }] }, { p_dir: { dr: 1, dc: 0 }, s_dirs: [{ dr: 0, dc: 1 }, { dr: 0, dc: -1 }] }, { p_dir: { dr: 0, dc: -1 }, s_dirs: [{ dr: 1, dc: 0 }, { dr: -1, dc: 0 }] }, { p_dir: { dr: -1, dc: 0 }, s_dirs: [{ dr: 0, dc: 1 }, { dr: 0, dc: -1 }] }, ];
+            let placementAttempts = 0; const MAX_PLACEMENT_ATTEMPTS_PER_WORD = 200;
+
+            for (const word of potentialWords) { if (wordsSuccessfullyEmbedded >= game.levelTargetWordsCount) break; let placed = false; placementAttempts = 0;
+                while (!placed && placementAttempts < MAX_PLACEMENT_ATTEMPTS_PER_WORD) {
+                    const r = Math.floor(Math.random() * rows); const c = Math.floor(Math.random() * cols); const attemptType = Math.random();
+                    if (attemptType < 0.65 || word.length < 4) { const dir = directions[Math.floor(Math.random() * directions.length)]; if (tryPlaceWordStraight(word, r, c, dir)) { placed = true; }
+                    } else { const strategy = lShapeStrategies[Math.floor(Math.random() * lShapeStrategies.length)]; const splitPoint = Math.floor(Math.random() * (word.length - 2)) + 1; if (splitPoint > 0 && word.length - splitPoint > 0 && tryPlaceWordLShape(word, r, c, strategy, splitPoint)) { placed = true; } }
+                    placementAttempts++;
+                }
+                if (placed) wordsSuccessfullyEmbedded++;
             }
-        } else {
-            markSelectionError(selectedCells);
-        }
-        selectedCells = []; currentPath = [];
-    }
-
-    function handleLevelComplete() {
-        disableGridEventListeners();
-        setTimeout(() => {
-            alert(`🎉 关卡 ${currentLevel} 完成！ 🎉`);
-            currentLevel++;
-            startGame();
-        }, 500);
-    }
-
-    // --- Visual Feedback Functions ---
-    function clearSelectionVisuals(clearTransform=!1){const cellsToClear=gridContainer.querySelectorAll(".grid-cell.selected, .grid-cell.error");cellsToClear.forEach((el=>{el.classList.remove("selected","error"),clearTransform&&(el.style.transform="")}))}
-    function markSelectionError(cells){cells.forEach((sc=>{sc&&sc.element&&sc.element.classList.add("error")})),setTimeout((()=>{cells.forEach((sc=>{sc&&sc.element&&(sc.element.classList.remove("error","selected"),sc.element.style.transform="")}))}),350)}
-    function markWordAsFound(cells){cells.forEach((sc=>{sc&&sc.element&&(sc.element.classList.remove("selected"),sc.element.classList.add("found"),sc.element.style.transform="")}))}
-
-    // --- UI Update Functions ---
-    function updateScore() { scoreElement.textContent = foundWords.size; }
-    function updateFoundWordsList() {
-        foundWordsList.innerHTML = '';
-        const sortedFoundWords = Array.from(foundWords).sort();
-        sortedFoundWords.forEach(word => { const li = document.createElement('li'); li.textContent = word; foundWordsList.appendChild(li); });
-    }
-
-    // --- Timer Functions ---
-    function startTimer(){currentLevel===1&&(elapsedTime=0),stopTimer(),updateTimerDisplay(),timerElement.classList.remove("tick"),timerInterval=setInterval((()=>{elapsedTime++,updateTimerDisplay(),timerElement.classList.add("tick"),setTimeout((()=>timerElement.classList.remove("tick")),150)}),1e3)}
-    function stopTimer(){clearInterval(timerInterval),timerInterval=null,timerElement.classList.remove("tick")}
-    function resetTimer(){stopTimer(),elapsedTime=0,updateTimerDisplay()}
-    function formatTime(timeInSeconds){const minutes=Math.floor(timeInSeconds/60),seconds=timeInSeconds%60;return`${minutes.toString().padStart(2,"0")}:${seconds.toString().padStart(2,"0")}`}
-    function updateTimerDisplay(){timerElement.textContent=formatTime(elapsedTime)}
-
-    // --- Hint Functionality --- <<< NEW SECTION
-    function showHint() {
-        // Check global flag first
-        if (!HINTS_ENABLED) {
-            console.warn("Hints are disabled globally.");
-            // Optionally provide feedback to user? alert("提示功能已禁用。");
-            return;
+            for (let r = 0; r < rows; r++) { for (let c = 0; c < cols; c++) { if (!game.grid[r][c].letter) { game.grid[r][c].letter = getWeightedRandomLetter(); } } }
+            game.levelTargetWordsCount = game.wordsToEmbed.length; 
         }
 
-        // Check if there are words placed and not all are found
-        if (!placedWords || placedWords.length === 0 || foundWords.size === placedWords.length) {
-            alert("所有单词都已找到或没有可提示的单词！");
-            hintBtn.disabled = true; // Disable button if no hints possible
-            return;
+        function canPlace(r, c, letter, wordId) { const { rows, cols } = game.gridSize; if (r < 0 || r >= rows || c < 0 || c >= cols) return false; const cell = game.grid[r][c]; return !cell.letter || (cell.letter === letter); }
+        
+        function tryPlaceWordStraight(word, startR, startC, dir) {
+            const path = []; for (let i = 0; i < word.length; i++) { const r = startR + i * dir.dr; const c = startC + i * dir.dc; if (!canPlace(r, c, word[i], word)) return false; path.push({ r, c }); }
+            const wordInfo = { word, path: [], found: false, visuallyFound: false };
+            for (let i = 0; i < word.length; i++) { const { r, c } = path[i]; const currentCellLetter = game.grid[r][c].letter; if (currentCellLetter && currentCellLetter !== word[i]) { return false; } game.grid[r][c].letter = word[i]; game.grid[r][c].occupiedByWord = word; wordInfo.path.push({ r, c }); }
+            game.wordsToEmbed.push(wordInfo); return true;
         }
 
-        // Find words that are placed but not yet in the foundWords Set
-        const unfoundWords = placedWords.filter(pw => !foundWords.has(pw.word));
-
-        if (unfoundWords.length === 0) {
-            // Should be covered by the initial check, but good safety
-            alert("没有更多可提示的单词了。");
-            hintBtn.disabled = true;
-            return;
+        function tryPlaceWordLShape(word, startR, startC, strategy, splitPoint) {
+            const wordPart1 = word.substring(0, splitPoint); const wordPart2 = word.substring(splitPoint); const tempPath = []; let currentR = startR; let currentC = startC;
+            for (let i = 0; i < wordPart1.length; i++) { const r = startR + i * strategy.p_dir.dr; const c = startC + i * strategy.p_dir.dc; if (!canPlace(r, c, wordPart1[i], word)) return false; tempPath.push({ r, c, letter: wordPart1[i] }); currentR = r; currentC = c; }
+            const shuffledSecondaryDirs = fisherYatesShuffle([...strategy.s_dirs]); let part2PlacedDetails = null;
+            for (const s_dir of shuffledSecondaryDirs) { let currentPart2Path = []; let tempPathValid = true; let nextR_part2 = currentR + s_dir.dr; let nextC_part2 = currentC + s_dir.dc;
+                for (let i = 0; i < wordPart2.length; i++) { const r = nextR_part2 + i * s_dir.dr; const c = nextC_part2 + i * s_dir.dc; const alreadyInTempPath = tempPath.some(p => p.r === r && p.c === c); if (alreadyInTempPath || !canPlace(r, c, wordPart2[i], word)) { tempPathValid = false; break; } currentPart2Path.push({ r, c, letter: wordPart2[i] }); }
+                if (tempPathValid) { part2PlacedDetails = currentPart2Path; break; }
+            }
+            if (!part2PlacedDetails) return false; const fullPathCoords = [];
+            [...tempPath, ...part2PlacedDetails].forEach(pItem => { game.grid[pItem.r][pItem.c].letter = pItem.letter; game.grid[pItem.r][pItem.c].occupiedByWord = word; fullPathCoords.push({ r: pItem.r, c: pItem.c }); });
+            game.wordsToEmbed.push({ word, path: fullPathCoords, found: false, visuallyFound: false }); return true;
         }
 
-        // Select a random unfound word
-        const randomIndex = Math.floor(Math.random() * unfoundWords.length);
-        const wordToHint = unfoundWords[randomIndex].word;
+        function renderGrid() {
+            const { rows, cols } = game.gridSize; dom.gridContainer.innerHTML = ''; dom.gridContainer.style.gridTemplateColumns = `repeat(${cols}, 1fr)`; dom.gridContainer.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+            // Cell size calculation is relative to the #grid-container itself, which has aspect-ratio
+            const gridContainerActualWidth = dom.gridContainer.offsetWidth; // Use offsetWidth for actual rendered width
+            const gridContainerActualHeight = dom.gridContainer.offsetHeight;
 
-        // Display the hint (using alert for simplicity)
-        alert(`提示: 试着找找单词 "${wordToHint}"`);
+            // Cell size will be determined by CSS grid's 1fr, but we can set font size based on it
+            // For dynamic font size if needed:
+            // let exampleCellWidth = gridContainerActualWidth / cols; 
+            // let exampleCellHeight = gridContainerActualHeight / rows;
+            // let cellSizeForFont = Math.min(exampleCellWidth, exampleCellHeight);
 
-        // Consider adding a cost or limit to hints in a full game
-    }
+            for (let r = 0; r < rows; r++) { for (let c = 0; c < cols; c++) {
+                const cellData = game.grid[r][c]; const cellElement = document.createElement('div'); cellElement.classList.add('grid-cell'); cellElement.textContent = cellData.letter; cellElement.dataset.r = r; cellElement.dataset.c = c;
+                // Dynamic width/height for cells are now handled by grid's 1fr, ensuring they fill the container.
+                // Font size adjustment based on grid size can still be useful.
+                const baseFontSize = parseFloat(getComputedStyle(cellElement).getPropertyValue('font-size'));
+                const scaleFactor = Math.min(20/cols, 20/rows, 1.2); // Adjust font based on cell density, cap at 1.2x
+                // cellElement.style.fontSize = `${Math.max(10, baseFontSize * scaleFactor * 0.8)}px`; // Example: scale font
+                cellData.element = cellElement; 
+                cellElement.addEventListener('mousedown', handleInteractionStart); cellElement.addEventListener('mousemove', handleInteractionMove);
+                cellElement.addEventListener('touchstart', handleInteractionStart, { passive: false }); cellElement.addEventListener('touchmove', handleInteractionMove, { passive: false });
+                dom.gridContainer.appendChild(cellElement);
+            }}
+        }
+        window.addEventListener('resize', () => { if (game.gridSize.rows > 0) { setTimeout(renderGrid, 0); } }); // Use timeout to ensure layout is stable
 
-    function updateHintButtonState() {
-        if (!hintBtn) return; // Exit if button doesn't exist
+        function getCellFromEvent(event) { let target; if (event.type.startsWith('touch')) { if (!event.touches[0]) return null; target = document.elementFromPoint(event.touches[0].clientX, event.touches[0].clientY); } else { target = event.target; } if (target && target.classList.contains('grid-cell')) { return { r: parseInt(target.dataset.r), c: parseInt(target.dataset.c), element: target }; } return null; }
+        
+        function handleInteractionStart(event) { if (event.type === 'touchstart' && event.touches.length > 1) return; event.preventDefault(); game.isDragging = true; game.selectedCells = []; document.querySelectorAll('.grid-cell.selected:not(.found)').forEach(el => el.classList.remove('selected')); const cell = getCellFromEvent(event); if (cell) { addCellToSelection(cell); } }
+        function handleInteractionMove(event) {
+            if (!game.isDragging) return; if (event.type === 'touchmove' && event.touches.length > 1) return; event.preventDefault();
+            const currentCell = getCellFromEvent(event); if (currentCell) { const lastCell = game.selectedCells[game.selectedCells.length - 1];
+                if (lastCell && (currentCell.r !== lastCell.r || currentCell.c !== lastCell.c)) {
+                    const dr = currentCell.r - lastCell.r; const dc = currentCell.c - lastCell.c;
+                    if (game.selectedCells.length > 1) { const secondLastCell = game.selectedCells[game.selectedCells.length - 2]; if (secondLastCell.r === currentCell.r && secondLastCell.c === currentCell.c) { removeLastCellFromSelection(); return; } }
+                    const isStrictlyCardinalAdjacent = (Math.abs(dr) + Math.abs(dc) === 1);
+                    if (isStrictlyCardinalAdjacent) { if (!game.selectedCells.find(sc => sc.r === currentCell.r && sc.c === currentCell.c)) { addCellToSelection(currentCell); } }
+                }
+            }
+        }
+        function handleInteractionEnd(event) { if (!game.isDragging) return; if (event.type === 'touchend' && event.changedTouches.length === 0) return; game.isDragging = false; validateSelection(); }
 
-        if (!HINTS_ENABLED) {
-            hintBtn.style.display = 'none'; // Hide button entirely if disabled globally
-            return;
+        function addCellToSelection(cell) { if (!cell || !cell.element) return; if (!game.selectedCells.find(sc => sc.r === cell.r && sc.c === cell.c)) { game.selectedCells.push(cell); cell.element.classList.add('selected'); } }
+        function removeLastCellFromSelection() { const lastCell = game.selectedCells.pop(); if (lastCell && lastCell.element) { if (!lastCell.element.classList.contains('found')) { lastCell.element.classList.remove('selected'); } } }
+        function clearSelectionHighlights(isError = false) { game.selectedCells.forEach(cell => { if (cell.element && !cell.element.classList.contains('found')) { if (isError) { cell.element.classList.add('selected-error'); setTimeout(() => { cell.element.classList.remove('selected-error'); cell.element.classList.remove('selected'); }, 300); } else { cell.element.classList.remove('selected'); } } }); if (!isError) game.selectedCells = []; else setTimeout(() => game.selectedCells = [], 300); }
+
+        function validateSelection() {
+            if (game.selectedCells.length < 2) { clearSelectionHighlights(); return; }
+            let selectedString = game.selectedCells.map(c => game.grid[c.r][c.c].letter).join(''); let selectedStringReversed = selectedString.split('').reverse().join(''); let foundMatch = null;
+            for (const wordInfo of game.wordsToEmbed) { if (!wordInfo.found) { if (wordInfo.word === selectedString || wordInfo.word === selectedStringReversed) { const pathMatches = checkPath(game.selectedCells, wordInfo.path) || checkPath(game.selectedCells, [...wordInfo.path].reverse()); if (pathMatches) { foundMatch = wordInfo; break; } } } }
+            if (!foundMatch && game.fuseInstance) { const processFuseResults = (results, originalSelectedString) => { if (results.length > 0) { results.sort((a, b) => { if (a.score !== b.score) return a.score - b.score; return Math.abs(a.item.word.length - originalSelectedString.length) - Math.abs(b.item.word.length - originalSelectedString.length); }); const bestMatchCandidate = results[0].item; if (bestMatchCandidate && !bestMatchCandidate.found) { const pathMatches = checkPath(game.selectedCells, bestMatchCandidate.path) || checkPath(game.selectedCells, [...bestMatchCandidate.path].reverse()); if (pathMatches) { return bestMatchCandidate; } } } return null; }; let fuseMatch = processFuseResults(game.fuseInstance.search(selectedString), selectedString); if (!fuseMatch) { fuseMatch = processFuseResults(game.fuseInstance.search(selectedStringReversed), selectedStringReversed); } if (fuseMatch) foundMatch = fuseMatch; }
+            if (foundMatch) { markWordAsFound(foundMatch); checkLevelCompletion(); clearSelectionHighlights(); } else { clearSelectionHighlights(true); }
         }
 
-        // Show button if hints enabled
-        hintBtn.style.display = 'inline-block';
+        function checkPath(selectedPath, targetPath) { if (selectedPath.length !== targetPath.length) return false; for (let i = 0; i < selectedPath.length; i++) { if (selectedPath[i].r !== targetPath[i].r || selectedPath[i].c !== targetPath[i].c) { return false; } } return true; }
+        function markWordAsFound(wordInfo) { wordInfo.found = true; wordInfo.visuallyFound = true; game.foundWordsThisLevel++; game.totalWordsFound++; wordInfo.path.forEach(p => { const cellEl = game.grid[p.r][p.c].element; if (cellEl) { cellEl.classList.add('found'); cellEl.classList.remove('selected'); } }); const li = dom.wordListUl.querySelector(`li[data-word="${wordInfo.word}"]`); if (li) li.classList.add('found'); updateStatsDisplay(); }
 
-        // Disable button if no words placed or all words found
-        const canHint = placedWords && placedWords.length > 0 && foundWords.size < placedWords.length;
-        hintBtn.disabled = !canHint;
-        hintBtn.title = canHint ? "显示一个未找到的单词" : "所有单词已找到";
-    }
-    // --- End of Hint Functionality ---
+        function startTimer() { stopTimer(); game.timer = 0; dom.timerDisplay.textContent = `${game.timer}s`; game.timerInterval = setInterval(() => { game.timer++; dom.timerDisplay.textContent = `${game.timer}s`; }, 1000); }
+        function stopTimer() { clearInterval(game.timerInterval); game.timerInterval = null; }
+        function updateStatsDisplay() { dom.levelInfoDisplay.textContent = game.currentLevel; dom.wordsCountDisplay.textContent = `${game.foundWordsThisLevel} / ${game.wordsToEmbed.length}`; dom.totalWordsFoundDisplay.textContent = game.totalWordsFound; dom.totalLevelsCompletedDisplay.textContent = game.totalLevelsCompleted; }
+        
+        function populateWordList() { dom.wordListUl.innerHTML = ''; const sortedWords = [...game.wordsToEmbed].sort((a,b) => a.word.localeCompare(b.word)); sortedWords.forEach(wordInfo => { const li = document.createElement('li'); li.textContent = wordInfo.word; li.dataset.word = wordInfo.word; if (wordInfo.found) li.classList.add('found'); dom.wordListUl.appendChild(li); }); }
 
-    // --- Game Initialization and Control ---
-    function initGame() {
-        // Attach button listeners ONCE
-        newGameBtn.addEventListener('click', () => {
-            if (totalWordsFoundAcrossLevels > 0 || elapsedTime > 0) {
-                if (confirm("重新开始游戏将丢失所有进度。确定吗？")) resetGame();
-            } else { resetGame(); }
-        });
+        function calculateLevelConfig(level) { const baseRows = 5; const baseCols = 5; const baseWords = 3; let rows = baseRows + (level - 1); let cols = baseCols + (level - 1); rows = Math.min(15, rows); cols = Math.min(15, cols); const numWords = Math.floor(baseWords * Math.pow(1.5, level - 1)); return { rows, cols, numWords: Math.max(baseWords, numWords) }; }
 
-        // <<< Add Hint Button Listener >>>
-        if (hintBtn) { // Check if button exists
-             hintBtn.addEventListener('click', showHint);
-        } else if (HINTS_ENABLED) {
-             console.warn("Hint button element not found, but hints are enabled.");
+        let hintTimeout = null;
+        function giveHint() { const unfoundWords = game.wordsToEmbed.filter(w => !w.found); if (unfoundWords.length > 0) { dom.hintButton.disabled = true; if (hintTimeout) clearTimeout(hintTimeout); hintTimeout = setTimeout(() => { if (game.foundWordsThisLevel < game.wordsToEmbed.length) dom.hintButton.disabled = false; }, 3000); const randomUnfoundWord = unfoundWords[Math.floor(Math.random() * unfoundWords.length)]; randomUnfoundWord.path.forEach((p, index) => { const cellEl = game.grid[p.r][p.c].element; if (cellEl && !cellEl.classList.contains('found')) { setTimeout(() => { cellEl.classList.add('hint'); setTimeout(() => cellEl.classList.remove('hint'), 1800); }, index * 80); } }); } }
+
+        function startGame() {
+            game.currentLevel++; game.foundWordsThisLevel = 0;
+            const config = calculateLevelConfig(game.currentLevel); game.gridSize = { rows: config.rows, cols: config.cols }; game.levelTargetWordsCount = config.numWords;
+            embedWords();
+            if (game.wordsToEmbed.length === 0) { alert("错误：无法生成关卡。"); game.currentLevel--; dom.startButton.disabled = false; return; }
+            game.currentTrie = new Trie(); game.wordsToEmbed.forEach(wordInfo => game.currentTrie.insert(wordInfo.word));
+            if (typeof Fuse !== 'undefined' && Fuse.toString().indexOf("mock Fuse") === -1) { game.fuseInstance = new Fuse(game.wordsToEmbed, { keys: ['word'], threshold: 0.35, includeScore: true, minMatchCharLength: 2, ignoreLocation: true }); } else { game.fuseInstance = null; }
+            dom.gridContainer.style.display = 'grid'; 
+            setTimeout(() => { renderGrid(); populateWordList(); if (game.currentLevel === 1 && !game.timerInterval) { startTimer(); } updateStatsDisplay(); dom.startButton.textContent = "下一关"; dom.startButton.disabled = true; dom.hintButton.disabled = (game.wordsToEmbed.length === 0 || game.foundWordsThisLevel === game.wordsToEmbed.length); }, 0);
         }
 
-        // Conditionally display hint button based on global setting
-        updateHintButtonState();
+        function checkLevelCompletion() { if (game.wordsToEmbed.length > 0 && game.foundWordsThisLevel === game.wordsToEmbed.length) { game.totalLevelsCompleted++; updateStatsDisplay(); dom.startButton.disabled = false; dom.hintButton.disabled = true; setTimeout(() => { alert(`🎉 恭喜! 完成第 ${game.currentLevel} 关! 总用时: ${game.timer}s 🎉`); }, 200); } }
 
-        // Start the first game
-        startGame();
-    }
-
-    function resetGame() {
-        console.log("Resetting game to Level 1...");
-        currentLevel = 1;
-        totalWordsFoundAcrossLevels = 0;
-        resetTimer();
-        startGame(); // Starts Level 1
-    }
-
-    function startGame() {
-        console.log(`Starting Level ${currentLevel}...`);
-        // stopTimer(); // Optional: pause timer during generation
-
-        // Generate everything for the current level
-        generateGrid(); // This now also calls updateHintButtonState
-
-        // Setup listeners and start timer
-        setupGridEventListeners();
-        gridContainer.style.cursor = 'pointer';
-        startTimer(); // Starts/resumes cumulative timer
-    }
-
-    // --- Initial Load ---
-    initGame();
-
-}); // End DOMContentLoaded
-
+        function initEventListeners() { dom.startButton.addEventListener('click', startGame); dom.hintButton.addEventListener('click', giveHint); document.addEventListener('mouseup', handleInteractionEnd); document.addEventListener('touchend', handleInteractionEnd, { passive: false }); }
+        document.addEventListener('DOMContentLoaded', () => { initEventListeners(); dom.levelInfoDisplay.textContent = '0'; dom.wordsCountDisplay.textContent = '0 / 0'; dom.startButton.textContent = "开始游戏"; });
     </script>
 </body>
 </html>
