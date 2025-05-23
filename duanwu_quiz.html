@@ -180,6 +180,14 @@
             color: #666;
             font-size: 0.9em;
         }
+
+        .review-mode {
+            font-style: italic;
+            color: #666;
+            text-align: center;
+            margin: 10px 0;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -194,12 +202,13 @@
             <div class="progress" id="progress"></div>
         </div>
 
+        <div id="review-mode" class="review-mode">回顾模式</div>
         <div id="quiz-container"></div>
 
         <div class="buttons">
             <button id="prev-btn" disabled>上一题</button>
             <button id="next-btn" disabled>下一题</button>
-            <button id="submit-btn" style="display: none;">提交答案</button>
+            <!-- <button id="submit-btn" style="display: none;">提交答案</button> -->
         </div>
 
         <div id="result" class="result"></div>
@@ -210,19 +219,19 @@
             {
                 type: 'choice',
                 question: '端午节是农历几月几日？',
-                options: ['五月初五', '五月初六', '五月初四', '五月初七'],
+                options: ['五月初六', '五月初五', '五月初四', '五月初七'],
                 answer: '五月初五'
             },
             {
                 type: 'choice',
                 question: '端午节的传统食物是什么？',
-                options: ['月饼', '粽子', '汤圆', '饺子'],
+                options: ['月饼', '汤圆', '粽子', '饺子'],
                 answer: '粽子'
             },
             {
                 type: 'choice',
                 question: '端午节是为了纪念哪位历史人物？',
-                options: ['屈原', '李白', '杜甫', '白居易'],
+                options: ['李白', '杜甫', '白居易', '屈原'],
                 answer: '屈原'
             },
             {
@@ -233,13 +242,13 @@
             {
                 type: 'choice',
                 question: '端午节佩戴香囊的习俗是为了什么？',
-                options: ['驱邪避瘟', '装饰美观', '增加香气', '显示身份'],
+                options: ['装饰美观', '增加香气', '驱邪避瘟', '显示身份'],
                 answer: '驱邪避瘟'
             },
             {
                 type: 'choice',
                 question: '端午节的传统饮品是什么？',
-                options: ['雄黄酒', '菊花茶', '绿茶', '红酒'],
+                options: ['菊花茶', '雄黄酒', '绿茶', '红酒'],
                 answer: '雄黄酒'
             },
             {
@@ -256,7 +265,7 @@
             {
                 type: 'choice',
                 question: '端午节时，人们会在手腕上系什么？',
-                options: ['五彩绳', '红绳', '金链', '银链'],
+                options: ['红绳', '金链', '五彩绳', '银链'],
                 answer: '五彩绳'
             },
             {
@@ -267,13 +276,13 @@
             // {
             //     type: 'choice',
             //     question: '端午节时，人们会在门上挂什么植物？',
-            //     options: ['艾草和菖蒲', '菊花', '玫瑰', '百合'],
+            //     options: ['菊花', '艾草和菖蒲', '玫瑰', '百合'],
             //     answer: '艾草和菖蒲'
             // },
             {
                 type: 'choice',
                 question: '粽子的形状通常是什么？',
-                options: ['三角形', '圆形', '方形', '长方形'],
+                options: ['圆形', '方形', '三角形', '长方形'],
                 answer: '三角形'
             },
             // {
@@ -284,13 +293,13 @@
             {
                 type: 'choice',
                 question: '端午节的传统活动不包括以下哪项？',
-                options: ['放风筝', '赛龙舟', '吃粽子', '挂艾草'],
+                options: ['赛龙舟', '放风筝', '吃粽子', '挂艾草'],
                 answer: '放风筝'
             },
             {
                 type: 'choice',
                 question: '粽子的馅料通常不包括什么？',
-                options: ['巧克力', '豆沙', '咸蛋黄', '猪肉'],
+                options: ['豆沙', '巧克力', '咸蛋黄', '猪肉'],
                 answer: '巧克力'
             },
             // {
@@ -301,25 +310,25 @@
             {
                 type: 'choice',
                 question: '端午节的传统颜色是什么？',
-                options: ['红色和绿色', '蓝色和白色', '黄色和紫色', '黑色和白色'],
+                options: ['黄色和紫色', '蓝色和白色', '黑色和白色', '红色和绿色'],
                 answer: '红色和绿色'
             },
             {
                 type: 'choice',
                 question: '屈原写的名篇《离骚》表达了什么？',
-                options: ['爱国情怀', '思乡之情', '爱情悲剧', '田园生活'],
+                options: ['思乡之情', '爱情悲剧', '爱国情怀', '田园生活'],
                 answer: '爱国情怀'
             },
             {
                 type: 'choice',
                 question: '端午节与下列哪个节日同为世界非物质文化遗产？',
-                options: ['中秋节', '清明节', '重阳节', '元宵节'],
+                options: ['中秋节', '清明节', '元宵节', '重阳节'],
                 answer: '清明节'
             },
             // {
             //     type: 'choice',
             //     question: '端午节的传统活动之一是赛龙舟，这个活动起源于什么？',
-            //     options: ['纪念屈原', '庆祝丰收', '祭祀祖先', '娱乐活动'],
+            //     options: ['祭祀祖先', '纪念屈原', '庆祝丰收', '娱乐活动'],
             //     answer: '纪念屈原'
             // }
         ];
@@ -329,6 +338,7 @@
         let quizCompleted = false;
         let questionAnswered = new Array(questions.length).fill(false);
         let questionAttempts = new Array(questions.length).fill(0);
+        let isReviewMode = false;
 
         function createQuestionElement(question, index) {
             const div = document.createElement('div');
@@ -405,23 +415,78 @@
             document.querySelector(`#question-${index}`).classList.add('active');
             
             document.getElementById('prev-btn').disabled = index === 0;
-            document.getElementById('next-btn').disabled = !questionAnswered[index];
+            document.getElementById('next-btn').disabled = !questionAnswered[index] && !isReviewMode;
             document.getElementById('next-btn').textContent = index === questions.length - 1 ? '完成' : '下一题';
+            document.getElementById('next-btn').style.display = 'inline-block';
             
             const progress = ((index + 1) / questions.length) * 100;
             document.querySelector('.progress').style.width = `${progress}%`;
 
-            updateAttemptsDisplay(index);
+            // 在回顾模式下显示答案
+            if (isReviewMode) {
+                document.getElementById('review-mode').style.display = 'block';
+                showAnswerFeedback(index, true);
+            } else {
+                document.getElementById('review-mode').style.display = 'none';
+                updateAttemptsDisplay(index);
+                if (questionAnswered[index]) {
+                    showAnswerFeedback(index);
+                }
+            }
         }
 
         function updateAttemptsDisplay(index) {
             const attemptsLeft = document.getElementById(`attempts-left-${index}`);
-            if (!questionAnswered[index]) {
+            if (!questionAnswered[index] && !isReviewMode) {
                 const remainingAttempts = 3 - questionAttempts[index];
                 attemptsLeft.textContent = `剩余尝试次数：${remainingAttempts}`;
                 attemptsLeft.style.display = 'block';
             } else {
                 attemptsLeft.style.display = 'none';
+            }
+        }
+
+        function showAnswerFeedback(index, isReviewDisplay = false) {
+            const question = questions[index];
+            const userAnswer = userAnswers[index];
+            const feedback = document.getElementById(`feedback-${index}`);
+            
+            const isCorrect = question.type === 'choice' 
+                ? userAnswer === question.answer
+                : userAnswer && userAnswer.toLowerCase().trim() === question.answer.toLowerCase().trim();
+
+            if (isCorrect) {
+                feedback.textContent = '回答正确！';
+                feedback.className = 'feedback correct';
+                feedback.style.display = 'block';
+
+                if (question.type === 'choice') {
+                    const options = document.querySelectorAll(`#question-${index} .option`);
+                    options.forEach(opt => {
+                        opt.classList.remove('wrong');
+                        if (opt.textContent === question.answer) {
+                            opt.classList.add('correct');
+                        }
+                    });
+                }
+            } else {
+                if (questionAttempts[index] >= 3 || isReviewDisplay) {
+                    feedback.textContent = `正确答案是：${question.answer}`;
+                    feedback.className = 'feedback wrong';
+                    feedback.style.display = 'block';
+
+                    if (question.type === 'choice') {
+                        const options = document.querySelectorAll(`#question-${index} .option`);
+                        options.forEach(opt => {
+                            if (opt.textContent === question.answer) {
+                                opt.classList.add('correct');
+                            }
+                            if (userAnswer && opt.textContent === userAnswer) {
+                                opt.classList.add('wrong');
+                            }
+                        });
+                    }
+                }
             }
         }
 
@@ -443,20 +508,7 @@
 
             if (isCorrect) {
                 questionAnswered[index] = true;
-                feedback.textContent = '回答正确！';
-                feedback.className = 'feedback correct';
-                feedback.style.display = 'block';
-
-                if (question.type === 'choice') {
-                    const options = document.querySelectorAll(`#question-${index} .option`);
-                    options.forEach(opt => {
-                        opt.classList.remove('wrong');
-                        if (opt.textContent === question.answer) {
-                            opt.classList.add('correct');
-                        }
-                    });
-                }
-
+                showAnswerFeedback(index);
                 setTimeout(() => {
                     document.getElementById('next-btn').disabled = false;
                 }, 500);
@@ -465,19 +517,7 @@
                 
                 if (questionAttempts[index] >= 3) {
                     questionAnswered[index] = true;
-                    feedback.textContent = `已达到最大尝试次数。正确答案是：${question.answer}`;
-                    feedback.className = 'feedback wrong';
-                    feedback.style.display = 'block';
-
-                    if (question.type === 'choice') {
-                        const options = document.querySelectorAll(`#question-${index} .option`);
-                        options.forEach(opt => {
-                            if (opt.textContent === question.answer) {
-                                opt.classList.add('correct');
-                            }
-                        });
-                    }
-
+                    showAnswerFeedback(index);
                     setTimeout(() => {
                         document.getElementById('next-btn').disabled = false;
                     }, 1000);
@@ -505,7 +545,7 @@
                 const question = questions[index];
                 return question.type === 'choice'
                     ? answer === question.answer
-                    : answer.toLowerCase().trim() === question.answer.toLowerCase().trim();
+                    : answer && answer.toLowerCase().trim() === question.answer.toLowerCase().trim();
             }).length;
 
             const resultDiv = document.getElementById('result');
@@ -513,10 +553,12 @@
                 <h2>测试完成！</h2>
                 <p>你的得分是：${correctAnswers} / ${questions.length}</p>
                 <p>正确率：${((correctAnswers / questions.length) * 100).toFixed(1)}%</p>
+                <p style="font-size: 0.8em; margin-top: 10px;">你可以点击"上一题"按钮回顾答题情况</p>
             `;
             resultDiv.style.display = 'block';
             document.getElementById('submit-btn').style.display = 'none';
             quizCompleted = true;
+            isReviewMode = true;
         }
 
         // 初始化问题
@@ -540,7 +582,7 @@
             if (currentQuestion < questions.length - 1) {
                 currentQuestion++;
                 showQuestion(currentQuestion);
-            } else {
+            } else if (!quizCompleted) {
                 document.getElementById('submit-btn').style.display = 'inline-block';
                 document.getElementById('next-btn').style.display = 'none';
             }
