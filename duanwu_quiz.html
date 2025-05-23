@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>端午节知识问答</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            line-height: 1.6;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            background-color: #d40000;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .quiz-image {
+            width: 100%;
+            max-width: 800px;
+            height: auto;
+            margin: 20px auto;
+            display: block;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .question-container {
+            background-color: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: none;
+        }
+
+        .question-container.active {
+            display: block;
+        }
+
+        .question {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            color: #d40000;
+        }
+
+        .options {
+            margin-left: 20px;
+        }
+
+        .option {
+            margin: 10px 0;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        .option:hover {
+            background-color: #f0f0f0;
+        }
+
+        .option.selected {
+            background-color: #ffe4e4;
+        }
+
+        .option.correct {
+            background-color: #e6ffe6;
+        }
+
+        .option.wrong {
+            background-color: #ffe6e6;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+
+        .buttons {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        button {
+            background-color: #d40000;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 0 10px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: #b30000;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .result {
+            text-align: center;
+            font-size: 1.5em;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background-color: #ddd;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+
+        .progress {
+            width: 0%;
+            height: 100%;
+            background-color: #d40000;
+            border-radius: 5px;
+            transition: width 0.3s;
+        }
+
+        .feedback {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .feedback.correct {
+            background-color: #e6ffe6;
+            color: #006600;
+        }
+
+        .feedback.wrong {
+            background-color: #ffe6e6;
+            color: #cc0000;
+        }
+
+        .check-answer-btn {
+            background-color: #4CAF50;
+            margin-top: 10px;
+        }
+
+        .check-answer-btn:hover:not(:disabled) {
+            background-color: #45a049;
+        }
+
+        .attempts-left {
+            margin-top: 10px;
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>端午节知识问答</h1>
+        </header>
+
+        <img src="https://niejinliang.github.io/static/20250523171947-duanwu-2.jpg" alt="端午节" class="quiz-image">
+
+        <div class="progress-bar">
+            <div class="progress" id="progress"></div>
+        </div>
+
+        <div id="quiz-container"></div>
+
+        <div class="buttons">
+            <button id="prev-btn" disabled>上一题</button>
+            <button id="next-btn" disabled>下一题</button>
+            <button id="submit-btn" style="display: none;">提交答案</button>
+        </div>
+
+        <div id="result" class="result"></div>
+    </div>
+
+    <script>
+        const questions = [
+            {
+                type: 'choice',
+                question: '端午节是农历几月几日？',
+                options: ['五月初五', '五月初六', '五月初四', '五月初七'],
+                answer: '五月初五'
+            },
+            {
+                type: 'choice',
+                question: '端午节的传统食物是什么？',
+                options: ['月饼', '粽子', '汤圆', '饺子'],
+                answer: '粽子'
+            },
+            {
+                type: 'choice',
+                question: '端午节是为了纪念哪位历史人物？',
+                options: ['屈原', '李白', '杜甫', '白居易'],
+                answer: '屈原'
+            },
+            {
+                type: 'fill',
+                question: '端午节的传统活动之一是赛龙舟，龙舟上通常有____名划手。',
+                answer: '20'
+            },
+            {
+                type: 'choice',
+                question: '端午节佩戴香囊的习俗是为了什么？',
+                options: ['驱邪避瘟', '装饰美观', '增加香气', '显示身份'],
+                answer: '驱邪避瘟'
+            },
+            {
+                type: 'choice',
+                question: '端午节的传统饮品是什么？',
+                options: ['雄黄酒', '菊花茶', '绿茶', '红酒'],
+                answer: '雄黄酒'
+            },
+            {
+                type: 'fill',
+                question: '端午节时，人们会在门前挂____来驱邪。',
+                answer: '艾草'
+            },
+            {
+                type: 'choice',
+                question: '粽子的主要原料是什么？',
+                options: ['糯米', '面粉', '玉米面', '小米'],
+                answer: '糯米'
+            },
+            {
+                type: 'choice',
+                question: '端午节时，人们会在手腕上系什么？',
+                options: ['五彩绳', '红绳', '金链', '银链'],
+                answer: '五彩绳'
+            },
+            {
+                type: 'fill',
+                question: '屈原投江自尽的地方是____江。',
+                answer: '汨罗'
+            },
+            // {
+            //     type: 'choice',
+            //     question: '端午节时，人们会在门上挂什么植物？',
+            //     options: ['艾草和菖蒲', '菊花', '玫瑰', '百合'],
+            //     answer: '艾草和菖蒲'
+            // },
+            {
+                type: 'choice',
+                question: '粽子的形状通常是什么？',
+                options: ['三角形', '圆形', '方形', '长方形'],
+                answer: '三角形'
+            },
+            // {
+            //     type: 'fill',
+            //     question: '端午节时，人们会在门前洒____水来驱邪。',
+            //     answer: '雄黄'
+            // },
+            {
+                type: 'choice',
+                question: '端午节的传统活动不包括以下哪项？',
+                options: ['放风筝', '赛龙舟', '吃粽子', '挂艾草'],
+                answer: '放风筝'
+            },
+            {
+                type: 'choice',
+                question: '粽子的馅料通常不包括什么？',
+                options: ['巧克力', '豆沙', '咸蛋黄', '猪肉'],
+                answer: '巧克力'
+            },
+            // {
+            //     type: 'fill',
+            //     question: '端午节时，人们会在门前挂____和____来驱邪。',
+            //     answer: '艾草 菖蒲'
+            // },
+            {
+                type: 'choice',
+                question: '端午节的传统颜色是什么？',
+                options: ['红色和绿色', '蓝色和白色', '黄色和紫色', '黑色和白色'],
+                answer: '红色和绿色'
+            },
+            {
+                type: 'choice',
+                question: '屈原写的名篇《离骚》表达了什么？',
+                options: ['爱国情怀', '思乡之情', '爱情悲剧', '田园生活'],
+                answer: '爱国情怀'
+            },
+            {
+                type: 'choice',
+                question: '端午节与下列哪个节日同为世界非物质文化遗产？',
+                options: ['中秋节', '清明节', '重阳节', '元宵节'],
+                answer: '清明节'
+            },
+            // {
+            //     type: 'choice',
+            //     question: '端午节的传统活动之一是赛龙舟，这个活动起源于什么？',
+            //     options: ['纪念屈原', '庆祝丰收', '祭祀祖先', '娱乐活动'],
+            //     answer: '纪念屈原'
+            // }
+        ];
+
+        let currentQuestion = 0;
+        let userAnswers = new Array(questions.length).fill(null);
+        let quizCompleted = false;
+        let questionAnswered = new Array(questions.length).fill(false);
+        let questionAttempts = new Array(questions.length).fill(0);
+
+        function createQuestionElement(question, index) {
+            const div = document.createElement('div');
+            div.className = 'question-container';
+            div.id = `question-${index}`;
+            
+            const questionText = document.createElement('div');
+            questionText.className = 'question';
+            questionText.textContent = `${index + 1}. ${question.question}`;
+            div.appendChild(questionText);
+
+            if (question.type === 'choice') {
+                const options = document.createElement('div');
+                options.className = 'options';
+                question.options.forEach((option, i) => {
+                    const optionDiv = document.createElement('div');
+                    optionDiv.className = 'option';
+                    optionDiv.textContent = option;
+                    optionDiv.onclick = () => {
+                        if (!questionAnswered[index] && questionAttempts[index] < 3) {
+                            selectOption(index, i);
+                            checkAnswer(index);
+                        }
+                    };
+                    options.appendChild(optionDiv);
+                });
+                div.appendChild(options);
+            } else {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.placeholder = '请输入答案';
+                input.value = userAnswers[index] || '';
+                input.onchange = (e) => {
+                    userAnswers[index] = e.target.value;
+                };
+                
+                const checkButton = document.createElement('button');
+                checkButton.textContent = '确认答案';
+                checkButton.className = 'check-answer-btn';
+                checkButton.onclick = () => {
+                    if (!questionAnswered[index] && questionAttempts[index] < 3 && input.value.trim()) {
+                        checkAnswer(index);
+                    }
+                };
+                
+                div.appendChild(input);
+                div.appendChild(checkButton);
+            }
+
+            const feedback = document.createElement('div');
+            feedback.className = 'feedback';
+            feedback.id = `feedback-${index}`;
+            div.appendChild(feedback);
+
+            const attemptsLeft = document.createElement('div');
+            attemptsLeft.className = 'attempts-left';
+            attemptsLeft.id = `attempts-left-${index}`;
+            div.appendChild(attemptsLeft);
+
+            return div;
+        }
+
+        function selectOption(questionIndex, optionIndex) {
+            const question = questions[questionIndex];
+            userAnswers[questionIndex] = question.options[optionIndex];
+            
+            const options = document.querySelectorAll(`#question-${questionIndex} .option`);
+            options.forEach(opt => opt.classList.remove('selected'));
+            options[optionIndex].classList.add('selected');
+        }
+
+        function showQuestion(index) {
+            document.querySelectorAll('.question-container').forEach(q => q.classList.remove('active'));
+            document.querySelector(`#question-${index}`).classList.add('active');
+            
+            document.getElementById('prev-btn').disabled = index === 0;
+            document.getElementById('next-btn').disabled = !questionAnswered[index];
+            document.getElementById('next-btn').textContent = index === questions.length - 1 ? '完成' : '下一题';
+            
+            const progress = ((index + 1) / questions.length) * 100;
+            document.querySelector('.progress').style.width = `${progress}%`;
+
+            updateAttemptsDisplay(index);
+        }
+
+        function updateAttemptsDisplay(index) {
+            const attemptsLeft = document.getElementById(`attempts-left-${index}`);
+            if (!questionAnswered[index]) {
+                const remainingAttempts = 3 - questionAttempts[index];
+                attemptsLeft.textContent = `剩余尝试次数：${remainingAttempts}`;
+                attemptsLeft.style.display = 'block';
+            } else {
+                attemptsLeft.style.display = 'none';
+            }
+        }
+
+        function checkAnswer(index) {
+            const question = questions[index];
+            const userAnswer = userAnswers[index];
+            const feedback = document.getElementById(`feedback-${index}`);
+            
+            if (!userAnswer || !userAnswer.trim()) {
+                feedback.textContent = '请回答这个问题';
+                feedback.className = 'feedback wrong';
+                feedback.style.display = 'block';
+                return false;
+            }
+
+            const isCorrect = question.type === 'choice' 
+                ? userAnswer === question.answer
+                : userAnswer.toLowerCase().trim() === question.answer.toLowerCase().trim();
+
+            if (isCorrect) {
+                questionAnswered[index] = true;
+                feedback.textContent = '回答正确！';
+                feedback.className = 'feedback correct';
+                feedback.style.display = 'block';
+
+                if (question.type === 'choice') {
+                    const options = document.querySelectorAll(`#question-${index} .option`);
+                    options.forEach(opt => {
+                        opt.classList.remove('wrong');
+                        if (opt.textContent === question.answer) {
+                            opt.classList.add('correct');
+                        }
+                    });
+                }
+
+                setTimeout(() => {
+                    document.getElementById('next-btn').disabled = false;
+                }, 500);
+            } else {
+                questionAttempts[index]++;
+                
+                if (questionAttempts[index] >= 3) {
+                    questionAnswered[index] = true;
+                    feedback.textContent = `已达到最大尝试次数。正确答案是：${question.answer}`;
+                    feedback.className = 'feedback wrong';
+                    feedback.style.display = 'block';
+
+                    if (question.type === 'choice') {
+                        const options = document.querySelectorAll(`#question-${index} .option`);
+                        options.forEach(opt => {
+                            if (opt.textContent === question.answer) {
+                                opt.classList.add('correct');
+                            }
+                        });
+                    }
+
+                    setTimeout(() => {
+                        document.getElementById('next-btn').disabled = false;
+                    }, 1000);
+                } else {
+                    feedback.textContent = '回答错误，请再试一次';
+                    feedback.className = 'feedback wrong';
+                    feedback.style.display = 'block';
+
+                    if (question.type === 'choice') {
+                        const options = document.querySelectorAll(`#question-${index} .option`);
+                        const selectedOption = Array.from(options).find(opt => opt.textContent === userAnswer);
+                        if (selectedOption) {
+                            selectedOption.classList.add('wrong');
+                        }
+                    }
+                }
+            }
+
+            updateAttemptsDisplay(index);
+            return isCorrect;
+        }
+
+        function showResult() {
+            const correctAnswers = userAnswers.filter((answer, index) => {
+                const question = questions[index];
+                return question.type === 'choice'
+                    ? answer === question.answer
+                    : answer.toLowerCase().trim() === question.answer.toLowerCase().trim();
+            }).length;
+
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = `
+                <h2>测试完成！</h2>
+                <p>你的得分是：${correctAnswers} / ${questions.length}</p>
+                <p>正确率：${((correctAnswers / questions.length) * 100).toFixed(1)}%</p>
+            `;
+            resultDiv.style.display = 'block';
+            document.getElementById('submit-btn').style.display = 'none';
+            quizCompleted = true;
+        }
+
+        // 初始化问题
+        const quizContainer = document.getElementById('quiz-container');
+        questions.forEach((question, index) => {
+            quizContainer.appendChild(createQuestionElement(question, index));
+        });
+
+        // 显示第一个问题
+        showQuestion(0);
+
+        // 按钮事件监听
+        document.getElementById('prev-btn').addEventListener('click', () => {
+            if (currentQuestion > 0) {
+                currentQuestion--;
+                showQuestion(currentQuestion);
+            }
+        });
+
+        document.getElementById('next-btn').addEventListener('click', () => {
+            if (currentQuestion < questions.length - 1) {
+                currentQuestion++;
+                showQuestion(currentQuestion);
+            } else {
+                document.getElementById('submit-btn').style.display = 'inline-block';
+                document.getElementById('next-btn').style.display = 'none';
+            }
+        });
+
+        document.getElementById('submit-btn').addEventListener('click', () => {
+            if (!quizCompleted) {
+                showResult();
+            }
+        });
+    </script>
+</body>
+</html>
